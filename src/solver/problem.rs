@@ -1,0 +1,55 @@
+use std::io::prelude::*;
+use std::io::BufReader;
+
+pub struct Item {
+    pub id: usize,
+    pub value: usize,
+    pub weight: usize,
+}
+
+impl Item {
+    fn new(id: usize, value: usize, weight: usize) -> Item {
+        Item { id, value, weight }
+    }
+}
+
+pub struct Problem {
+    pub items: Vec<Item>,
+    pub capacity: usize,
+}
+
+impl Problem {
+    pub fn read<F: std::io::BufRead>(input: F) -> Result<Problem, Box<dyn std::error::Error>> {
+        let mut lines = input.lines();
+
+        let item_count = match lines.next() {
+            Some(token) => token?.parse::<usize>()?,
+            None => panic!("Should be usize for item count"),
+        };
+
+        let mut items = Vec::with_capacity(item_count);
+        for _ in 0..item_count {
+            if let Some(Ok(tokens_line)) = lines.next() {
+                let mut tokens = tokens_line.split_whitespace();
+                let id = tokens.next().unwrap().parse::<usize>()?;
+                let value = tokens.next().unwrap().parse::<usize>()?;
+                let weight = tokens.next().unwrap().parse::<usize>()?;
+                items.push(Item::new(id, value, weight));
+            } else {
+                panic!("Should be usize for item count");
+            }
+        }
+
+        let capacity = match lines.next() {
+            Some(token) => token?.parse::<usize>()?,
+            None => panic!("Should be usize for capacity"),
+        };
+
+        Ok(Problem { items, capacity })
+    }
+}
+
+pub struct Solution {
+    pub decision: Vec<bool>,
+    pub value: usize,
+}
