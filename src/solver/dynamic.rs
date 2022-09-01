@@ -27,6 +27,13 @@ impl Array {
     }
 
     fn get(&self, x: usize, y: usize) -> usize {
+        let index = self.index(x, y);
+        if index > 40000 {
+            println!(
+                "index: {}, x: {}, y: {}, width: {}",
+                index, x, y, self.width
+            );
+        }
         self.data[self.index(x, y)]
     }
 
@@ -50,15 +57,18 @@ pub fn solve(problem: &Problem) -> Solution {
     for y in 1..height {
         let item = &problem.items[y - 1];
         // This loop is iterating over weights
-        for x in 1..width {
+        for x in 0..width {
             // Not taking y would be same be same value as
             // decision for previous item at this weight
             let do_not_take = sum_array.get(x, y - 1);
 
             // Other wise, find value for previous items
             // without weight of item we're gonna take
-            let do_take = sum_array.get(x - item.weight, y - 1) + item.value;
-
+            let do_take = if item.weight <= x {
+                sum_array.get(x - item.weight, y - 1) + item.value
+            } else {
+                0
+            };
             let new_value = do_take.max(do_not_take);
             sum_array.set(x, y, new_value);
         }
