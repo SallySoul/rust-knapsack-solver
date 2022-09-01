@@ -1,12 +1,13 @@
 use clap::Parser;
 
 mod generate;
+mod solver;
 
 #[derive(Parser, Debug)]
 #[clap(version)]
 enum Command {
     Generate(generate::Options),
-    Solve,
+    Solve(solver::Options),
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -14,7 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match command {
         Command::Generate(options) => generate::run(&options)?,
-        Command::Solve => println!("TO BE IMPLEMENTED"),
+        Command::Solve(options) => solver::run(&options)?,
     }
 
     Ok(())
