@@ -2,7 +2,7 @@ use crate::solver::problem::*;
 
 // Pre-emptivley catch large
 // TODO: make this more sensible / configurable?
-pub const MAX_STATES: usize = 400000;
+pub const MAX_STATES: usize = 1000000;
 
 struct Array {
     data: Vec<usize>,
@@ -28,12 +28,6 @@ impl Array {
 
     fn get(&self, x: usize, y: usize) -> usize {
         let index = self.index(x, y);
-        if index > 40000 {
-            println!(
-                "index: {}, x: {}, y: {}, width: {}",
-                index, x, y, self.width
-            );
-        }
         self.data[self.index(x, y)]
     }
 

@@ -1,6 +1,8 @@
 mod dynamic;
 mod greedy;
+mod minknap;
 mod problem;
+mod twopass;
 
 use crate::solver::problem::*;
 
@@ -14,6 +16,7 @@ arg_enum! {
 /// The different solver implementations that are available
 #[derive(Parser, Debug)]
 pub enum Solver {
+    TwoPass,
     Greedy,
     BranchAndBound,
     Dynamic,
@@ -48,22 +51,21 @@ pub fn run(options: &Options) -> Result<(), Box<dyn std::error::Error>> {
     let solution = match options.solver {
         Solver::Greedy => greedy::solve(&problem),
         Solver::Dynamic => dynamic::solve(&problem),
+        Solver::TwoPass => twopass::solve(&problem)?,
         Solver::BranchAndBound => {
             panic!("not implemented");
         }
-        Solver::MinKnap => {
-            panic!("not implemented");
-        }
+        Solver::MinKnap => minknap::solve(&problem)?,
     };
-
     println!(
         "Solver Used: {:?}, Solution Value: {}",
         options.solver, solution.value
     );
+    /*
     println!("Id\tDecision");
     for i in 0..problem.items.len() {
         println!("{}\t{}", problem.items[i].id, solution.decision[i]);
     }
-
+    */
     Ok(())
 }
