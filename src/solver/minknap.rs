@@ -87,7 +87,6 @@ impl StateKey {
 
 struct StateValue {
     profit: i32,
-    sol: usize,
 }
 
 struct StateMap<'a> {
@@ -131,7 +130,7 @@ impl<'a> StateMap<'a> {
             problem,
         }
     }
-
+    /*
     fn get(&mut self, key: StateKey) -> StateValue {
         println!("Get State s: {}, t: {}, c: {}", key.s, key.t, key.capacity);
         if key.s == self.break_item() && key.t == self.break_item() - 1 {
@@ -207,15 +206,96 @@ impl<'a> StateMap<'a> {
 
         StateValue { profit: 0, sol: 0 }
     }
+    */
+}
+
+// Need to make linear index for [s, t]
+// Normal indexing is 0..n
+// Need to map to [b, b], [b - 1, b], [b - 1, b + 1], [b - 2, b + 1],
+// Idea!
+// mk_index
+// if even, subtrace from b, if odd add to b
+//
+
+#[derive(Debug)]
+enum Test {
+    Add(usize),
+    Remove(usize),
+}
+
+struct State {
+    s: usize,
+    t: usize,
+    mki: usize,
+    test: Test,
+}
+
+fn mki_to_state(i: usize, b: usize, n: usize) -> State {
+    if i == 0 {
+        return State {
+            s: b,
+            t: b - 1,
+            mki: 0,
+            test: Test::Add(b),
+        };
+    }
+
+    let even = i % 2 == 0;
+
+    let t_o;
+    let s_o;
+    if even {
+        s_o = i / 2;
+        t_o = s_o - 1;
+    } else {
+        s_o = (i + 1) / 2 - 1;
+        t_o = s_o;
+    }
+
+    let s;
+    let t;
+    if s_o > b {
+        s = 0;
+        let extra = s_o - b;
+        t = b + t_o + extra;
+    } else if t_o + b >= n {
+        t = n - 1;
+        let extra = (t_o + b) - (n - 1);
+        s = b - (s_o + extra);
+    } else {
+        s = b - s_o;
+        t = b + t_o;
+    }
+
+    let test = match (even, s > 0, t < n - 1) {
+        (true, _, true) => Test::Add(t + 1),
+        (false, true, _) => Test::Remove(s - 1),
+        (true, _, false) => Test::Remove(s - 1),
+        (false, false, _) => Test::Add(t + 1),
+    };
+
+    State { s, t, mki: i, test }
 }
 
 pub fn solve(problem: &Problem) -> Result<Solution, Box<dyn std::error::Error>> {
-    let mut state_map = StateMap::new(problem);
-    let break_item = state_map.break_item();
-    let w = state_map.ordered_item(break_item + 1).weight as i32;
-    let bs = state_map.break_profit() as i32;
-    println!("Break Item: {}", break_item);
-    state_map.get(StateKey::new(break_item - 1, break_item + 1, bs + w));
+    {
+        let n = 30;
+        let b = 10;
+        for i in 0..n {
+            let s = mki_to_state(i, b, n);
+
+            println!("{}\t[{}, {}]\t{:?}", i, s.s, s.t, s.test);
+        }
+    }
+
+    /*
+        let mut state_map = StateMap::new(problem);
+        let break_item = state_map.break_item();
+        let w = state_map.ordered_item(break_item + 1).weight as i32;
+        let bs = state_map.break_profit() as i32;
+        println!("Break Item: {}", break_item);
+        state_map.get(StateKey::new(break_item - 1, break_item + 1, bs + w));
+    */
 
     Ok(Solution {
         decision: vec![false; 0],
