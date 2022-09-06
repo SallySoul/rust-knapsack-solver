@@ -1,4 +1,5 @@
 use crate::solver::problem::*;
+use std::collections::HashSet;
 
 struct ItemEfficiency {
     index: usize,
@@ -10,11 +11,17 @@ fn efficiency_ordering(problem: &Problem) -> Vec<ItemEfficiency> {
         .items
         .iter()
         .enumerate()
-        .map(|(index, item)| ItemEfficiency {
-            index,
-            efficiency: item.value as f32 / item.weight as f32,
+        .map(|(index, item)| {
+            if item.weight == 0 {
+                panic!("Items with zero weight are not supported");
+            }
+            ItemEfficiency {
+                index,
+                efficiency: item.value as f32 / item.weight as f32,
+            }
         })
         .collect();
+
     // We want Highest ratio to lowest
     // Hence b cmp a
     item_efficiencies.sort_unstable_by(|a, b| b.efficiency.partial_cmp(&a.efficiency).unwrap());
@@ -70,16 +77,10 @@ fn initial_bounds(problem: &Problem, item_efficiencies: &Vec<ItemEfficiency>) ->
     */
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct State {
     c: usize,
     p: usize,
-}
-
-impl State {
-    fn new(c: usize, p: usize) -> State {
-        State { c, p }
-    }
 }
 
 pub struct Instance<'a> {
@@ -89,6 +90,8 @@ pub struct Instance<'a> {
     s: usize,
     t: usize,
     lower_bound: usize,
+    state_counter: usize,
+    max_iter_state: usize,
 }
 
 impl<'a> Instance<'a> {
@@ -107,6 +110,8 @@ impl<'a> Instance<'a> {
             s,
             t,
             lower_bound,
+            state_counter: 0,
+            max_iter_state: 0,
         }
     }
 
@@ -154,7 +159,7 @@ impl<'a> Instance<'a> {
         self.problem.items[index]
     }
 
-    fn add_item_t(&mut self, current_states: &Vec<State>, next_states: &mut Vec<State>) {
+    fn add_item_t(&mut self, current_states: &HashSet<State>, next_states: &mut HashSet<State>) {
         println!("  add_item {}", self.t);
         let item = self.item(self.t);
         for s in current_states {
@@ -162,14 +167,17 @@ impl<'a> Instance<'a> {
             if s.c + item.weight < 2 * self.problem_capacity() {
                 let new_profit = s.p + item.value;
                 let new_capacity = s.c + item.weight;
-                next_states.push(State::new(new_profit, new_capacity));
+                next_states.insert(State {
+                    p: new_profit,
+                    c: new_capacity,
+                });
             }
             // Keep things as they are
-            next_states.push(*s);
+            next_states.insert(*s);
         }
     }
 
-    fn remove_item_s(&mut self, current_states: &Vec<State>, next_states: &mut Vec<State>) {
+    fn remove_item_s(&mut self, current_states: &HashSet<State>, next_states: &mut HashSet<State>) {
         println!("  remove_item {}", self.s);
         let item = self.item(self.s);
         for s in current_states {
@@ -177,19 +185,30 @@ impl<'a> Instance<'a> {
             if s.c >= item.weight {
                 let new_profit = s.p - item.value;
                 let new_capacity = s.c - item.weight;
-                next_states.push(State::new(new_profit, new_capacity));
+                next_states.insert(State {
+                    p: new_profit,
+                    c: new_capacity,
+                });
             }
 
             // Keep things as they are
-            next_states.push(*s);
+            next_states.insert(*s);
         }
     }
 
-    fn reduce_states(&mut self, current_states: &mut Vec<State>, next_states: &mut Vec<State>) {
+    fn reduce_states(
+        &mut self,
+        current_states: &mut HashSet<State>,
+        next_states: &mut HashSet<State>,
+    ) {
         println!("  reduce_states");
+
+        self.state_counter += next_states.len();
+        self.max_iter_state = self.max_iter_state.max(next_states.len());
+
         // Update lower bound
         for s in next_states.iter() {
-            if s.c < self.problem_capacity() && s.p > self.lower_bound {
+            if s.c <= self.problem_capacity() && s.p > self.lower_bound {
                 self.lower_bound = s.p;
                 println!("    found new lower_bound: {}", self.lower_bound);
             }
@@ -199,8 +218,8 @@ impl<'a> Instance<'a> {
         current_states.clear();
         current_states.extend(
             next_states
-                .drain(0..)
-                .filter(|s| self.upper_bound(s) < self.lower_bound),
+                .drain()
+                .filter(|s| self.upper_bound(s) > self.lower_bound),
         );
         let diff = state_count - current_states.len();
         println!(
@@ -212,15 +231,21 @@ impl<'a> Instance<'a> {
     }
 
     fn solve(&mut self) {
-        let mut current_states = Vec::new();
-        let mut next_states = Vec::new();
+        let mut current_states = HashSet::new();
+        let mut next_states = HashSet::new();
         let n = self.item_count();
         let mut i = 0;
-        current_states.push(State::new(
+        current_states.insert(State {
+            p: self.break_solution.profit,
+            c: self.break_solution.weight,
+        });
+
+        println!(
+            "c: {}, break profit: {}, break weight: {}",
+            self.problem_capacity(),
             self.break_solution.profit,
-            self.break_solution.weight,
-        ));
-        println!("About to Solve");
+            self.break_solution.weight
+        );
         while !current_states.is_empty() && i < n {
             println!("Iteration i: {}", i);
             let n = self.item_count();
@@ -244,6 +269,11 @@ impl<'a> Instance<'a> {
 pub fn solve(problem: &Problem) -> Result<Solution, Box<dyn std::error::Error>> {
     let mut instance = Instance::new(problem);
     instance.solve();
+    println!(
+        "lb: {}, sc: {}, mc: {}",
+        instance.lower_bound, instance.state_counter, instance.max_iter_state
+    );
+    println!("MAX: {}", std::usize::MAX);
     // So
     // while we have states to explore
     // advance mki index

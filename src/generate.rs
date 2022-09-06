@@ -31,9 +31,14 @@ pub struct Options {
     #[clap(short = 'n', long, value_parser, default_value_t = 30)]
     item_count: usize,
 
-    /// Capacity for the knapsack
-    #[clap(short, long, value_parser, default_value_t = 700)]
-    capacity: usize,
+    /// Capacity for the knapsack,
+    /// If unspecified, use the weight sum proportion
+    #[clap(short, long, value_parser)]
+    capacity: Option<usize>,
+
+    /// Capacity, by default is proportion of sum of item weights
+    #[clap(long, value_parser, default_value_t = 0.5)]
+    capacity_ratio: f32,
 
     /// Upper bound on weight
     #[clap(short, long, value_parser, default_value_t = 100)]
@@ -42,6 +47,11 @@ pub struct Options {
     /// Upper bound on weight
     #[clap(short, long, value_parser, default_value_t = 100)]
     value_bound: usize,
+
+    /// Lower bound for values. between 0 and 1.0
+    /// scaled with value_bound
+    #[clap(long, value_parser, default_value_t = 0.0)]
+    value_t_lower_bound: f32,
 
     /// Where to write the problem file
     #[clap(short, long, value_parser)]
@@ -54,11 +64,18 @@ pub fn run(options: &Options) -> Result<(), Box<dyn std::error::Error>> {
     let mut rng = rand::thread_rng();
 
     writeln!(output_writer, "{}", options.item_count)?;
-    match options.correlation {
+    let weight_sum = match options.correlation {
         Correlation::None => write_no_correlation(options, &mut output_writer, &mut rng)?,
         Correlation::Some => write_correlation(options, &mut output_writer, &mut rng)?,
-    }
-    writeln!(output_writer, "{}", options.capacity)?;
+    };
+
+    let capacity = if let Some(c) = options.capacity {
+        c
+    } else {
+        (options.capacity_ratio * weight_sum as f32).ceil() as usize
+    };
+    println!("Weight Sum: {}, Capacity: {}", weight_sum, capacity);
+    writeln!(output_writer, "{}", capacity)?;
 
     Ok(())
 }
@@ -67,34 +84,48 @@ fn write_no_correlation<O: std::io::Write>(
     options: &Options,
     output: &mut O,
     rng: &mut ThreadRng,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<usize, Box<dyn std::error::Error>> {
     let value_distribution = Uniform::from(0..options.value_bound);
     let weight_distribution = Uniform::from(0..options.weight_bound);
+    let mut weight_sum = 0;
     for id in 0..options.item_count {
         let value = value_distribution.sample(rng);
         let weight = weight_distribution.sample(rng);
+        weight_sum += weight;
         writeln!(output, "{} {} {}", id, value, weight)?;
     }
-    Ok(())
+    Ok(weight_sum)
 }
 
 fn write_correlation<O: std::io::Write>(
     options: &Options,
     output: &mut O,
     rng: &mut ThreadRng,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<usize, Box<dyn std::error::Error>> {
     let t_distribution = Uniform::from(0.0..1f32);
     let offset_distribution = Uniform::from(-1.0..1.0f32);
     let value_bound_f32 = options.value_bound as f32;
     let weight_bound_f32 = options.weight_bound as f32;
+    let mut weight_sum = 0;
     for id in 0..options.item_count {
         let value_t = t_distribution.sample(rng);
         let offset = offset_distribution.sample(rng);
 
-        let weight_t = (value_t + options.coeff * offset).clamp(0.0, 1.0);
+        let weight_t = (value_t + value_t * options.coeff * offset).clamp(0.0, 1.0);
         let value = (value_t * value_bound_f32) as usize;
-        let weight = (weight_t * weight_bound_f32) as usize;
+        // No zero weights
+        let weight = 1.max((weight_t * weight_bound_f32) as usize);
+
+        // no zero weights!
+        weight_sum += weight;
+
+        if weight == 0 {
+            println!(
+                "vt: {}, wt: {}, v: {}, w: {}",
+                value_t, weight_t, value, weight
+            );
+        }
         writeln!(output, "{} {} {}", id, value, weight)?;
     }
-    Ok(())
+    Ok(weight_sum)
 }
