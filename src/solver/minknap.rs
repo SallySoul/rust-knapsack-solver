@@ -1,7 +1,5 @@
 use crate::solver::problem::*;
 
-use std::hash::{Hash, Hasher};
-
 struct ItemEfficiency {
     index: usize,
     efficiency: f32,
@@ -72,231 +70,191 @@ fn initial_bounds(problem: &Problem, item_efficiencies: &Vec<ItemEfficiency>) ->
     */
 }
 
-#[derive(Hash)]
-struct StateKey {
-    s: usize,
-    t: usize,
-    capacity: i32,
+#[derive(Copy, Clone)]
+pub struct State {
+    c: usize,
+    p: usize,
 }
 
-impl StateKey {
-    fn new(s: usize, t: usize, capacity: i32) -> StateKey {
-        StateKey { s, t, capacity }
+impl State {
+    fn new(c: usize, p: usize) -> State {
+        State { c, p }
     }
 }
 
-struct StateValue {
-    profit: i32,
-}
-
-struct StateMap<'a> {
-    states: std::collections::HashMap<StateKey, StateValue>,
+pub struct Instance<'a> {
     item_efficiencies: Vec<ItemEfficiency>,
     break_solution: BreakSolution,
     problem: &'a Problem,
+    s: usize,
+    t: usize,
+    lower_bound: usize,
 }
 
-impl<'a> StateMap<'a> {
-    fn break_item(&self) -> usize {
-        self.break_solution.break_item
-    }
-
-    fn break_weight(&self) -> i32 {
-        self.break_solution.weight as i32
-    }
-
-    fn break_profit(&self) -> i32 {
-        self.break_solution.profit as i32
-    }
-
-    fn over_capacity(&self) -> i32 {
-        // From paper? ehhhh
-        self.problem.capacity as i32 * 2
-    }
-
-    fn ordered_item(&self, ordered_index: usize) -> &Item {
-        let item_index = self.item_efficiencies[ordered_index].index;
-        &self.problem.items[item_index]
-    }
-
-    fn new(problem: &Problem) -> StateMap {
+impl<'a> Instance<'a> {
+    fn new(problem: &Problem) -> Instance {
         let item_efficiencies = efficiency_ordering(problem);
         let break_solution = initial_bounds(problem, &item_efficiencies);
+        let lower_bound = break_solution.profit;
+        let b = break_solution.break_item;
+        let s = b;
+        let t = b - 1;
 
-        StateMap {
-            states: std::collections::HashMap::new(),
+        Instance {
             item_efficiencies,
             break_solution,
             problem,
+            s,
+            t,
+            lower_bound,
         }
     }
-    /*
-    fn get(&mut self, key: StateKey) -> StateValue {
-        println!("Get State s: {}, t: {}, c: {}", key.s, key.t, key.capacity);
-        if key.s == self.break_item() && key.t == self.break_item() - 1 {
-            if key.capacity < self.break_weight() {
-                println!("  base case, less than break");
-                return StateValue {
-                    profit: std::i32::MIN,
-                    sol: 0,
-                };
+
+    fn problem_capacity(&self) -> usize {
+        self.problem.capacity
+    }
+
+    fn upper_bound(&self, s: &State) -> usize {
+        let n = self.item_count();
+        if s.c <= self.problem_capacity() {
+            // Under capacity
+            if self.t < n - 1 {
+                // Best we could do is linear add next t item
+                let weight_remainder = (self.problem.capacity - s.c) as f32;
+                let next_t_efficiency = self.item_efficiencies[self.t + 1].efficiency;
+                s.p + (weight_remainder * next_t_efficiency).ceil() as usize
             } else {
-                println!("  base case, greater than break");
-                return StateValue {
-                    profit: self.break_profit(),
-                    sol: 0,
-                };
+                // No more items to add, we're done
+                s.p
+            }
+        } else {
+            // Over capacity
+            if self.s > 0 {
+                // Best we could do is linear remove next s item
+                let weight_remainder = (s.c - self.problem.capacity) as f32;
+                let next_s_efficiency = self.item_efficiencies[self.s - 1].efficiency;
+                let linear_diff = (weight_remainder * next_s_efficiency).ceil() as usize;
+                if linear_diff > s.p {
+                    0
+                } else {
+                    s.p - linear_diff
+                }
+            } else {
+                s.p
+            }
+        }
+    }
+
+    fn item_count(&self) -> usize {
+        self.problem.items.len()
+    }
+
+    fn item(&self, ordered_index: usize) -> Item {
+        let index = self.item_efficiencies[ordered_index].index;
+        self.problem.items[index]
+    }
+
+    fn add_item_t(&mut self, current_states: &Vec<State>, next_states: &mut Vec<State>) {
+        println!("  add_item {}", self.t);
+        let item = self.item(self.t);
+        for s in current_states {
+            // State if we add item
+            if s.c + item.weight < 2 * self.problem_capacity() {
+                let new_profit = s.p + item.value;
+                let new_capacity = s.c + item.weight;
+                next_states.push(State::new(new_profit, new_capacity));
+            }
+            // Keep things as they are
+            next_states.push(*s);
+        }
+    }
+
+    fn remove_item_s(&mut self, current_states: &Vec<State>, next_states: &mut Vec<State>) {
+        println!("  remove_item {}", self.s);
+        let item = self.item(self.s);
+        for s in current_states {
+            // State if we add item
+            if s.c >= item.weight {
+                let new_profit = s.p - item.value;
+                let new_capacity = s.c - item.weight;
+                next_states.push(State::new(new_profit, new_capacity));
+            }
+
+            // Keep things as they are
+            next_states.push(*s);
+        }
+    }
+
+    fn reduce_states(&mut self, current_states: &mut Vec<State>, next_states: &mut Vec<State>) {
+        println!("  reduce_states");
+        // Update lower bound
+        for s in next_states.iter() {
+            if s.c < self.problem_capacity() && s.p > self.lower_bound {
+                self.lower_bound = s.p;
+                println!("    found new lower_bound: {}", self.lower_bound);
             }
         }
 
-        let mut new_profit = std::i32::MIN;
-
-        assert!(key.t >= self.break_item());
-        assert!(key.s < self.break_item());
-
-        let item_s_index = self.item_efficiencies[key.s].index;
-        let item_t_index = self.item_efficiencies[key.t].index;
-        let item_s = &self.problem.items[item_s_index];
-        let item_t = &self.problem.items[item_t_index];
-
-        let sv_1 = self
-            .get(StateKey::new(key.s, key.t - 1, key.capacity))
-            .profit;
-        new_profit = new_profit.max(sv_1);
-
-        if key.capacity - (item_t.weight as i32) >= 0 {
-            let sv_2 = self
-                .get(StateKey::new(
-                    key.s,
-                    key.t - 1,
-                    key.capacity - item_t.weight as i32,
-                ))
-                .profit
-                + item_t.value as i32;
-            new_profit = new_profit.max(sv_2);
-        }
-
-        let sv_3 = self
-            .get(StateKey::new(key.s + 1, key.t, key.capacity))
-            .profit;
-        new_profit = new_profit.max(sv_3);
-
-        if key.capacity + (item_s.weight as i32) < self.over_capacity() {
-            let sv_4 = self
-                .get(StateKey::new(
-                    key.s + 1,
-                    key.t,
-                    key.capacity + item_s.weight as i32,
-                ))
-                .profit
-                - item_s.value as i32;
-            new_profit = new_profit.max(sv_4);
-        }
-
-        println!(
-            "  new profit: {}, s: {}, t: {}, c: {}",
-            new_profit, key.s, key.t, key.capacity
+        let state_count = next_states.len();
+        current_states.clear();
+        current_states.extend(
+            next_states
+                .drain(0..)
+                .filter(|s| self.upper_bound(s) < self.lower_bound),
         );
-
-        // So... Lower bound is
-        //   - Starts with break solution
-        //   - Improve as we find states with higher profit under capacity limit
-        // We can compute upper bound with the whole
-        // weigth difference times next item thing
-
-        StateValue { profit: 0, sol: 0 }
-    }
-    */
-}
-
-// Need to make linear index for [s, t]
-// Normal indexing is 0..n
-// Need to map to [b, b], [b - 1, b], [b - 1, b + 1], [b - 2, b + 1],
-// Idea!
-// mk_index
-// if even, subtrace from b, if odd add to b
-//
-
-#[derive(Debug)]
-enum Test {
-    Add(usize),
-    Remove(usize),
-}
-
-struct State {
-    s: usize,
-    t: usize,
-    mki: usize,
-    test: Test,
-}
-
-fn mki_to_state(i: usize, b: usize, n: usize) -> State {
-    if i == 0 {
-        return State {
-            s: b,
-            t: b - 1,
-            mki: 0,
-            test: Test::Add(b),
-        };
+        let diff = state_count - current_states.len();
+        println!(
+            "  reduced {} states, {} -> {}",
+            diff,
+            state_count,
+            current_states.len()
+        );
     }
 
-    let even = i % 2 == 0;
+    fn solve(&mut self) {
+        let mut current_states = Vec::new();
+        let mut next_states = Vec::new();
+        let n = self.item_count();
+        let mut i = 0;
+        current_states.push(State::new(
+            self.break_solution.profit,
+            self.break_solution.weight,
+        ));
+        println!("About to Solve");
+        while !current_states.is_empty() && i < n {
+            println!("Iteration i: {}", i);
+            let n = self.item_count();
+            if self.t < n - 1 {
+                self.t += 1;
+                self.add_item_t(&current_states, &mut next_states);
+            }
+            self.reduce_states(&mut current_states, &mut next_states);
 
-    let t_o;
-    let s_o;
-    if even {
-        s_o = i / 2;
-        t_o = s_o - 1;
-    } else {
-        s_o = (i + 1) / 2 - 1;
-        t_o = s_o;
+            if self.s > 0 {
+                self.s -= 1;
+                self.remove_item_s(&current_states, &mut next_states);
+            }
+            self.reduce_states(&mut current_states, &mut next_states);
+
+            i += 1;
+        }
     }
-
-    let s;
-    let t;
-    if s_o > b {
-        s = 0;
-        let extra = s_o - b;
-        t = b + t_o + extra;
-    } else if t_o + b >= n {
-        t = n - 1;
-        let extra = (t_o + b) - (n - 1);
-        s = b - (s_o + extra);
-    } else {
-        s = b - s_o;
-        t = b + t_o;
-    }
-
-    let test = match (even, s > 0, t < n - 1) {
-        (true, _, true) => Test::Add(t + 1),
-        (false, true, _) => Test::Remove(s - 1),
-        (true, _, false) => Test::Remove(s - 1),
-        (false, false, _) => Test::Add(t + 1),
-    };
-
-    State { s, t, mki: i, test }
 }
 
 pub fn solve(problem: &Problem) -> Result<Solution, Box<dyn std::error::Error>> {
-    {
-        let n = 30;
-        let b = 10;
-        for i in 0..n {
-            let s = mki_to_state(i, b, n);
+    let mut instance = Instance::new(problem);
+    instance.solve();
+    // So
+    // while we have states to explore
+    // advance mki index
+    // Try new state for both action and ignoring it
+    // Bounds test both
+    // Insert resulthing things to try into priority queue
+    // double buffer states
+    //
+    // We need action for each index! not per state
 
-            println!("{}\t[{}, {}]\t{:?}", i, s.s, s.t, s.test);
-        }
-    }
-
-    /*
-        let mut state_map = StateMap::new(problem);
-        let break_item = state_map.break_item();
-        let w = state_map.ordered_item(break_item + 1).weight as i32;
-        let bs = state_map.break_profit() as i32;
-        println!("Break Item: {}", break_item);
-        state_map.get(StateKey::new(break_item - 1, break_item + 1, bs + w));
-    */
-
+    // Unlike pisnger minkap we do a full sort
     Ok(Solution {
         decision: vec![false; 0],
         value: 0,

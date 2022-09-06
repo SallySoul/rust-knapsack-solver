@@ -1,9 +1,5 @@
 use crate::solver::problem::*;
 use std::collections::HashSet;
-use std::fs::File;
-use std::io::prelude::*;
-use std::io::BufWriter;
-use std::io::Write;
 //use std::fmt::Write;
 /*
 struct State {

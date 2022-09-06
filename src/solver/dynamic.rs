@@ -16,6 +16,8 @@ impl Array {
             panic!("Problem exceeds size limit");
         }
 
+        println!("Array size: {}", size);
+
         Array {
             data: vec![0; size],
             width,

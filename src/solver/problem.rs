@@ -1,6 +1,7 @@
 use std::io::prelude::*;
 use std::io::BufReader;
 
+#[derive(Copy, Clone)]
 pub struct Item {
     pub id: usize,
     pub value: usize,
