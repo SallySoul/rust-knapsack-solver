@@ -160,7 +160,7 @@ impl<'a> Instance<'a> {
     }
 
     fn add_item_t(&mut self, current_states: &HashSet<State>, next_states: &mut HashSet<State>) {
-        println!("  add_item {}", self.t);
+        //println!("  add_item {}", self.t);
         let item = self.item(self.t);
         for s in current_states {
             // State if we add item
@@ -178,7 +178,7 @@ impl<'a> Instance<'a> {
     }
 
     fn remove_item_s(&mut self, current_states: &HashSet<State>, next_states: &mut HashSet<State>) {
-        println!("  remove_item {}", self.s);
+        //println!("  remove_item {}", self.s);
         let item = self.item(self.s);
         for s in current_states {
             // State if we add item
@@ -201,7 +201,7 @@ impl<'a> Instance<'a> {
         current_states: &mut HashSet<State>,
         next_states: &mut HashSet<State>,
     ) {
-        println!("  reduce_states");
+        //println!("  reduce_states");
 
         self.state_counter += next_states.len();
         self.max_iter_state = self.max_iter_state.max(next_states.len());
@@ -210,7 +210,7 @@ impl<'a> Instance<'a> {
         for s in next_states.iter() {
             if s.c <= self.problem_capacity() && s.p > self.lower_bound {
                 self.lower_bound = s.p;
-                println!("    found new lower_bound: {}", self.lower_bound);
+                //println!("    found new lower_bound: {}", self.lower_bound);
             }
         }
 
@@ -221,6 +221,7 @@ impl<'a> Instance<'a> {
                 .drain()
                 .filter(|s| self.upper_bound(s) > self.lower_bound),
         );
+        /*
         let diff = state_count - current_states.len();
         println!(
             "  reduced {} states, {} -> {}",
@@ -228,6 +229,7 @@ impl<'a> Instance<'a> {
             state_count,
             current_states.len()
         );
+        */
     }
 
     fn solve(&mut self) {
@@ -247,7 +249,14 @@ impl<'a> Instance<'a> {
             self.break_solution.weight
         );
         while !current_states.is_empty() && i < n {
-            println!("Iteration i: {}", i);
+            if i % 100 == 0 {
+                println!(
+                    "Iteration i: {}, active states: {}",
+                    i,
+                    current_states.len()
+                );
+            }
+
             let n = self.item_count();
             if self.t < n - 1 {
                 self.t += 1;
