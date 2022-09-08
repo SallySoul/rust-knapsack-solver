@@ -1,6 +1,7 @@
 use crate::solver::problem::*;
 use crate::solver::sol_tree::*;
-use std::collections::HashSet;
+use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 
 #[derive(Debug)]
 struct ItemEfficiency {
@@ -77,10 +78,14 @@ fn initial_bounds(
     (result, decision)
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct State {
+#[derive(Hash, Debug, Copy, Clone, PartialEq, Eq)]
+pub struct StateKey {
     c: usize,
     p: usize,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct StateValue {
     sol: SolCrumb,
 }
 
@@ -133,7 +138,7 @@ impl<'a> Instance<'a> {
         self.problem.capacity
     }
 
-    fn upper_bound(&self, s: &State) -> usize {
+    fn upper_bound(&self, s: &StateKey) -> usize {
         let n = self.item_count();
         if s.c <= self.problem_capacity() {
             // Under capacity
@@ -178,67 +183,79 @@ impl<'a> Instance<'a> {
         self.item_order.push(index);
     }
 
-    fn add_item_t(&mut self, current_states: &HashSet<State>, next_states: &mut HashSet<State>) {
+    fn add_item_t(
+        &mut self,
+        current_states: &HashMap<StateKey, StateValue>,
+        next_states: &mut HashMap<StateKey, StateValue>,
+    ) {
         self.add_to_item_order(self.t);
         let item = self.item(self.t);
-        for s in current_states {
+        for (s, value) in current_states {
             // State if we add item
             if s.c + item.weight < 2 * self.problem_capacity() {
                 let new_profit = s.p + item.value;
                 let new_capacity = s.c + item.weight;
-                let mut new_sol = s.sol;
+                let mut new_sol = value.sol;
                 new_sol.add_decision(true);
-                next_states.insert(State {
-                    p: new_profit,
-                    c: new_capacity,
-                    sol: new_sol,
-                });
+                next_states.insert(
+                    StateKey {
+                        p: new_profit,
+                        c: new_capacity,
+                    },
+                    StateValue { sol: new_sol },
+                );
             }
             // Keep things as they are
-            let mut old_s = *s;
-            old_s.sol.add_decision(false);
-            next_states.insert(old_s);
+            let mut old_v = *value;
+            old_v.sol.add_decision(false);
+            next_states.insert(*s, old_v);
         }
     }
 
-    fn remove_item_s(&mut self, current_states: &HashSet<State>, next_states: &mut HashSet<State>) {
+    fn remove_item_s(
+        &mut self,
+        current_states: &HashMap<StateKey, StateValue>,
+        next_states: &mut HashMap<StateKey, StateValue>,
+    ) {
         self.add_to_item_order(self.s);
         let item = self.item(self.s);
-        for s in current_states {
+        for (s, value) in current_states {
             // State if we add item
             if s.c >= item.weight {
                 let new_profit = s.p - item.value;
                 let new_capacity = s.c - item.weight;
-                let mut new_sol = s.sol;
+                let mut new_sol = value.sol;
                 new_sol.add_decision(true);
-                next_states.insert(State {
-                    p: new_profit,
-                    c: new_capacity,
-                    sol: new_sol,
-                });
+                next_states.insert(
+                    StateKey {
+                        p: new_profit,
+                        c: new_capacity,
+                    },
+                    StateValue { sol: new_sol },
+                );
             }
 
             // Keep things as they are
-            let mut old_s = *s;
-            old_s.sol.add_decision(false);
-            next_states.insert(old_s);
+            let mut old_v = *value;
+            old_v.sol.add_decision(false);
+            next_states.insert(*s, old_v);
         }
     }
 
     fn reduce_states(
         &mut self,
         sol_tree: &mut SolTree,
-        current_states: &mut HashSet<State>,
-        next_states: &mut HashSet<State>,
+        current_states: &mut HashMap<StateKey, StateValue>,
+        next_states: &mut HashMap<StateKey, StateValue>,
     ) {
         self.state_counter += next_states.len();
         self.max_iter_state = self.max_iter_state.max(next_states.len());
 
         // Update lower bound
-        for s in next_states.iter() {
+        for (s, value) in next_states.iter() {
             if s.c <= self.problem_capacity() && s.p > self.lower_bound {
                 self.lower_bound = s.p;
-                self.best_sol = s.sol;
+                self.best_sol = value.sol;
                 self.best_sol_level = self.sol_level + 1;
                 self.best_sol_item = self.item_order.len() - 1;
             }
@@ -257,10 +274,10 @@ impl<'a> Instance<'a> {
             current_states.extend(
                 next_states
                     .drain()
-                    .filter(|s| self.upper_bound(s) > self.lower_bound)
-                    .map(|mut s| {
-                        sol_tree.fresh_crumb(&mut s.sol);
-                        s
+                    .filter(|(s, _)| self.upper_bound(s) > self.lower_bound)
+                    .map(|(s, mut v)| {
+                        sol_tree.fresh_crumb(&mut v.sol);
+                        (s, v)
                     }),
             );
         } else {
@@ -268,7 +285,7 @@ impl<'a> Instance<'a> {
             current_states.extend(
                 next_states
                     .drain()
-                    .filter(|s| self.upper_bound(s) > self.lower_bound),
+                    .filter(|(s, _)| self.upper_bound(s) > self.lower_bound),
             );
         }
     }
@@ -286,15 +303,19 @@ impl<'a> Instance<'a> {
     }
 
     fn solve(&mut self) {
-        let mut current_states = HashSet::new();
-        let mut next_states = HashSet::new();
+        let mut current_states = HashMap::new();
+        let mut next_states = HashMap::new();
         let n = self.item_count();
         let mut i = 0;
-        current_states.insert(State {
-            p: self.break_solution.profit,
-            c: self.break_solution.weight,
-            sol: SolCrumb::new(0),
-        });
+        current_states.insert(
+            StateKey {
+                p: self.break_solution.profit,
+                c: self.break_solution.weight,
+            },
+            StateValue {
+                sol: SolCrumb::new(0),
+            },
+        );
 
         let mut sol_tree = SolTree::new();
         while !current_states.is_empty() && i < n {
