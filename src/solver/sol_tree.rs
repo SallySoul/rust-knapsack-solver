@@ -2,7 +2,7 @@
 // So we store a compressed version of the decision history
 // 1 bit per decision
 // Each state carries a u64,
-// When that buffer is filled we add it to a shared tree 
+// When that buffer is filled we add it to a shared tree
 
 struct BacktrackState<'a> {
     item_start: usize,
