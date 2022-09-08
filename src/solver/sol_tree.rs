@@ -4,8 +4,6 @@
 // Each state carries a u64,
 // When that buffer is filled we commit it a merkle tree of shared history
 
-use std::collections::HashSet;
-
 struct BacktrackState<'a> {
     item_start: usize,
     item_order: &'a [usize],
@@ -22,7 +20,7 @@ impl<'a> BacktrackState<'a> {
     }
 }
 
-#[derive(Hash, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, Hash, PartialEq, Eq, Copy, Clone)]
 pub struct SolCrumb {
     recent: u64,
     previous: usize,
@@ -54,6 +52,10 @@ impl SolTree {
         SolTree { crumbs }
     }
 
+    pub fn len(&self) -> usize {
+        self.crumbs.len()
+    }
+
     fn get(&self, index: usize) -> &SolCrumb {
         &self.crumbs[index]
     }
@@ -77,12 +79,7 @@ impl SolTree {
         item_order: &[usize],
         decision_vector: &mut [bool],
     ) {
-        let mut bt_state = BacktrackState {
-            item_start: item_order.len() - 1,
-            item_order,
-            decision_vector,
-        };
-
+        let mut bt_state = BacktrackState::new(item_order, decision_vector);
         backtrack_crumb(root_crumb.recent, level, &mut bt_state);
         let mut previous_crumb = root_crumb.previous;
         while previous_crumb != 0 {
@@ -95,7 +92,7 @@ impl SolTree {
 
 fn backtrack_crumb(recent: u64, level: usize, bt_state: &mut BacktrackState) {
     let mut binary_decisions = recent;
-    for i in 0..level {
+    for _ in 0..level {
         // Pull the last bit, toggle that decision if true
         let decision = (binary_decisions & 1u64) != 0;
         binary_decisions >>= 1;

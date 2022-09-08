@@ -2,8 +2,8 @@ mod dynamic;
 mod greedy;
 mod minknap;
 mod problem;
-mod twopass;
 mod sol_tree;
+mod twopass;
 
 use crate::solver::problem::*;
 
@@ -30,6 +30,10 @@ pub struct Options {
     /// Which solver implementation to use
     #[clap(short, long, default_value_t = Solver::Greedy)]
     solver: Solver,
+
+    /// Do no print the decision vector
+    #[clap(short, long)]
+    no_print_solution: bool,
 
     /// Problem file to try.
     /// If not specified, problem should be fed in via STD IN
@@ -58,15 +62,26 @@ pub fn run(options: &Options) -> Result<(), Box<dyn std::error::Error>> {
         }
         Solver::MinKnap => minknap::solve(&problem)?,
     };
+
+    let greedy_sol = greedy::solve(&problem);
+
+    if !solution.validate(&problem) {
+        println!("ERROR: Solution is not valid!");
+    }
+
+    if !options.no_print_solution {
+        println!("Id\tDecision\tGD");
+        for i in 0..problem.items.len() {
+            println!(
+                "{}\t{}\t{}",
+                problem.items[i].id, solution.decision[i], greedy_sol.decision[i]
+            );
+        }
+    }
+
     println!(
         "Solver Used: {:?}, Solution Value: {}",
         options.solver, solution.value
     );
-    /*
-    println!("Id\tDecision");
-    for i in 0..problem.items.len() {
-        println!("{}\t{}", problem.items[i].id, solution.decision[i]);
-    }
-    */
     Ok(())
 }

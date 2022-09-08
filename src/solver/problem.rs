@@ -1,6 +1,3 @@
-use std::io::prelude::*;
-use std::io::BufReader;
-
 #[derive(Copy, Clone)]
 pub struct Item {
     pub id: usize,
@@ -53,4 +50,16 @@ impl Problem {
 pub struct Solution {
     pub decision: Vec<bool>,
     pub value: usize,
+}
+
+impl Solution {
+    pub fn validate(&self, problem: &Problem) -> bool {
+        let mut sum = 0;
+        for (d, i) in self.decision.iter().zip(problem.items.iter()) {
+            if *d {
+                sum += i.value;
+            }
+        }
+        sum == self.value
+    }
 }

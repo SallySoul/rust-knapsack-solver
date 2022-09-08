@@ -30,7 +30,7 @@ impl Array {
 
     fn get(&self, x: usize, y: usize) -> usize {
         let index = self.index(x, y);
-        self.data[self.index(x, y)]
+        self.data[index]
     }
 
     fn set(&mut self, x: usize, y: usize, v: usize) {
