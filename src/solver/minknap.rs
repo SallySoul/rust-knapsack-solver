@@ -2,6 +2,7 @@ use crate::solver::problem::*;
 use crate::solver::sol_tree::*;
 use std::collections::HashSet;
 
+#[derive(Debug)]
 struct ItemEfficiency {
     index: usize,
     efficiency: f32,
@@ -51,14 +52,14 @@ fn initial_bounds(
     let mut profit_sum = 0;
     let mut weight_sum = 0;
     let mut i = 0;
-    let mut decision = Vec::with_capacity(item_count);
+    let mut decision = vec![false; item_count];
     while i < item_count {
         let index = item_efficiencies[i].index;
         let item = &problem.items[index];
         if item.weight + weight_sum < problem.capacity {
             profit_sum += item.value;
             weight_sum += item.weight;
-            decision.push(true);
+            decision[index] = true;
         } else {
             result.break_item = i;
             result.profit = profit_sum;
@@ -73,14 +74,6 @@ fn initial_bounds(
         i += 1;
     }
 
-    while i < item_count {
-        decision.push(false);
-        i += 1;
-    }
-
-    // TODO debug assert?
-    assert_eq!(decision.len(), item_count);
-
     (result, decision)
 }
 
@@ -92,6 +85,9 @@ pub struct State {
 }
 
 pub struct Instance<'a> {
+    break_d: Vec<bool>,
+    best_sol_item: usize,
+    best_sol_level: usize,
     best_sol: SolCrumb,
     sol_level: usize,
     decision: Vec<bool>,
@@ -117,6 +113,9 @@ impl<'a> Instance<'a> {
         let t = b - 1;
 
         Instance {
+            best_sol_level: 0,
+            best_sol_item: 0,
+            break_d: decision.clone(),
             best_sol: SolCrumb::new(0),
             sol_level: 0,
             decision,
@@ -179,6 +178,7 @@ impl<'a> Instance<'a> {
     fn add_to_item_order(&mut self, ordered_index: usize) {
         let index = self.item_efficiencies[ordered_index].index;
         self.item_order.push(index);
+        println!("add_to_item_order: {}", index);
     }
 
     fn add_item_t(&mut self, current_states: &HashSet<State>, next_states: &mut HashSet<State>) {
@@ -202,6 +202,10 @@ impl<'a> Instance<'a> {
             let mut old_s = *s;
             old_s.sol.add_decision(false);
             next_states.insert(old_s);
+        }
+
+        for s in next_states.iter() {
+            println!(" s.c: {}, s.p: {}, s.sol: {:064b}", s.c, s.p, s.sol.recent);
         }
     }
 
@@ -228,6 +232,10 @@ impl<'a> Instance<'a> {
             old_s.sol.add_decision(false);
             next_states.insert(old_s);
         }
+
+        for s in next_states.iter() {
+            println!(" s.c: {}, s.p: {}, s.sol: {:064b}", s.c, s.p, s.sol.recent);
+        }
     }
 
     fn reduce_states(
@@ -244,8 +252,11 @@ impl<'a> Instance<'a> {
         // Update lower bound
         for s in next_states.iter() {
             if s.c <= self.problem_capacity() && s.p > self.lower_bound {
+                println!("New lower bound found: s.p: {}, sol: {:064b}", s.p, s.sol.recent);
                 self.lower_bound = s.p;
                 self.best_sol = s.sol;
+                self.best_sol_level = self.sol_level + 1;
+                self.best_sol_item = self.item_order.len() - 1;
                 //println!("    found new lower_bound: {}", self.lower_bound);
             }
         }
@@ -291,9 +302,13 @@ impl<'a> Instance<'a> {
 
     fn backtrack_decision(&mut self, sol_tree: &mut SolTree) {
         // Since reduce states increments all kept states
+        println!("About to backtrack sol, best_sol_level: {}, sol_level: {}, best_sol_item: {}, item_order_len: {}", self.best_sol_level, self.sol_level, self.best_sol_item, self.item_order.len());
+        self.item_order.drain(self.best_sol_item + 1..);
+        println!("Post drain len: {}", self.item_order.len());
+
         sol_tree.backtrack(
             self.best_sol,
-            self.sol_level,
+            self.best_sol_level,
             &self.item_order,
             &mut self.decision,
         );
@@ -310,9 +325,12 @@ impl<'a> Instance<'a> {
             sol: SolCrumb::new(0),
         });
 
+        println!("Break Solution Profit: {}, Break Solution Value: {}",
+                 self.break_solution.profit, self.break_solution.weight);
+
         let mut sol_tree = SolTree::new();
         while !current_states.is_empty() && i < n {
-            if i % 100 == 0 {
+            if i % 1 == 0 {
                 println!(
                     "Iteration i: {}, active states: {}, sol tree size: {}",
                     i,
@@ -326,15 +344,15 @@ impl<'a> Instance<'a> {
                 self.t += 1;
                 self.add_item_t(&current_states, &mut next_states);
                 self.reduce_states(&mut sol_tree, &mut current_states, &mut next_states);
+                i += 1;
             }
 
             if self.s > 0 {
                 self.s -= 1;
                 self.remove_item_s(&current_states, &mut next_states);
                 self.reduce_states(&mut sol_tree, &mut current_states, &mut next_states);
+                i += 1;
             }
-
-            i += 1;
         }
         self.backtrack_decision(&mut sol_tree);
     }
@@ -348,6 +366,12 @@ pub fn solve(problem: &Problem) -> Result<Solution, Box<dyn std::error::Error>> 
         "lb: {}, sc: {}, mc: {}",
         instance.lower_bound, instance.state_counter, instance.max_iter_state
     );
+
+    println!("{:?}", instance.item_order);
+    println!("Index\tEfficiency\tD\tBD");
+    for i in instance.item_efficiencies {
+        println!("{}\t{:.3}\t{}\t{}", i.index, i.efficiency, instance.decision[i.index], instance.break_d[i.index]);
+    }
 
     Ok(Solution {
         decision: instance.decision,

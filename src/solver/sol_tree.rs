@@ -2,7 +2,7 @@
 // So we store a compressed version of the decision history
 // 1 bit per decision
 // Each state carries a u64,
-// When that buffer is filled we commit it a merkle tree of shared history
+// When that buffer is filled we add it to a shared tree 
 
 struct BacktrackState<'a> {
     item_start: usize,
@@ -22,7 +22,7 @@ impl<'a> BacktrackState<'a> {
 
 #[derive(Debug, Hash, PartialEq, Eq, Copy, Clone)]
 pub struct SolCrumb {
-    recent: u64,
+    pub recent: u64,
     previous: usize,
 }
 

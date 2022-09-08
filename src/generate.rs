@@ -85,8 +85,8 @@ fn write_no_correlation<O: std::io::Write>(
     output: &mut O,
     rng: &mut ThreadRng,
 ) -> Result<usize, Box<dyn std::error::Error>> {
-    let value_distribution = Uniform::from(0..options.value_bound);
-    let weight_distribution = Uniform::from(0..options.weight_bound);
+    let value_distribution = Uniform::from(1..options.value_bound);
+    let weight_distribution = Uniform::from(1..options.weight_bound);
     let mut weight_sum = 0;
     for id in 0..options.item_count {
         let value = value_distribution.sample(rng);
@@ -112,7 +112,7 @@ fn write_correlation<O: std::io::Write>(
         let offset = offset_distribution.sample(rng);
 
         let weight_t = (value_t + value_t * options.coeff * offset).clamp(0.0, 1.0);
-        let value = (value_t * value_bound_f32) as usize;
+        let value = 1.max((value_t * value_bound_f32) as usize);
         // No zero weights
         let weight = 1.max((weight_t * weight_bound_f32) as usize);
 
