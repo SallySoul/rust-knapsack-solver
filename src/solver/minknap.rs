@@ -1,7 +1,7 @@
 use crate::solver::problem::*;
 use crate::solver::sol_tree::*;
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 
 #[derive(Debug)]
 struct ItemEfficiency {
@@ -41,7 +41,7 @@ struct BreakSolution {
 
 fn initial_bounds(
     problem: &Problem,
-    item_efficiencies: &Vec<ItemEfficiency>,
+    item_efficiencies: &[ItemEfficiency],
 ) -> (BreakSolution, Vec<bool>) {
     let item_count = problem.items.len();
     let mut result = BreakSolution {
@@ -320,11 +320,14 @@ impl<'a> Instance<'a> {
         let mut sol_tree = SolTree::new();
         while !current_states.is_empty() && i < n {
             if i % 5 == 0 {
+                let core_width = (self.t - self.s) + 1;
+                let core_percentage = 100.0 * (core_width as f32 / n as f32);
                 println!(
-                    "Iteration i: {}, active states: {}, sol tree size: {}",
+                    "Iteration i: {}, active states: {}, sol tree size: {}, core_size: %{:.4}",
                     i,
                     current_states.len(),
                     sol_tree.len(),
+                    core_percentage,
                 );
             }
 
