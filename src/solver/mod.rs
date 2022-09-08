@@ -3,6 +3,7 @@ mod greedy;
 mod minknap;
 mod problem;
 mod twopass;
+mod sol_tree;
 
 use crate::solver::problem::*;
 

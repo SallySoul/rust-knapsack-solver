@@ -36,7 +36,7 @@ struct BreakSolution {
     linear_profit: usize,
 }
 
-fn initial_bounds(problem: &Problem, item_efficiencies: &Vec<ItemEfficiency>) -> BreakSolution {
+fn initial_bounds(problem: &Problem, item_efficiencies: &Vec<ItemEfficiency>) -> (BreakSolution, Vec<bool>) {
     let item_count = problem.items.len();
     let mut result = BreakSolution {
         break_item: 0,
@@ -47,13 +47,16 @@ fn initial_bounds(problem: &Problem, item_efficiencies: &Vec<ItemEfficiency>) ->
     let mut profit_sum = 0;
     let mut weight_sum = 0;
     let mut i = 0;
+    let mut decision = Vec::with_capacity(item_count);
     while i < item_count {
         let index = item_efficiencies[i].index;
         let item = &problem.items[index];
         if item.weight + weight_sum < problem.capacity {
             profit_sum += item.value;
             weight_sum += item.weight;
+            decision.push(true);
         } else {
+            decision.push(false);
             result.break_item = i;
             result.profit = profit_sum;
             result.weight = weight_sum;
@@ -62,19 +65,17 @@ fn initial_bounds(problem: &Problem, item_efficiencies: &Vec<ItemEfficiency>) ->
             let break_item_efficiency = item_efficiencies[i].efficiency;
             result.linear_profit =
                 profit_sum + (remaining_weight as f32 * break_item_efficiency).ceil() as usize;
-            return result;
+            break;
         }
         i += 1;
     }
 
-    // Should never hit this?
-    panic!("All items in solutions?");
-    /*
-    result.break_item = item_count - 1;
-    result.initial_lb = profit_sum;
-    result.initial_ub = profit_sum;
-    return result
-    */
+    while i < item_count {
+        decision.push(false); 
+    }
+    assert_eq!(decision.len(), item_count);
+
+    (result, decision)
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -84,6 +85,8 @@ pub struct State {
 }
 
 pub struct Instance<'a> {
+    decision: Vec<bool>,
+    item_order: Vec<usize>,
     item_efficiencies: Vec<ItemEfficiency>,
     break_solution: BreakSolution,
     problem: &'a Problem,
@@ -96,14 +99,17 @@ pub struct Instance<'a> {
 
 impl<'a> Instance<'a> {
     fn new(problem: &Problem) -> Instance {
+        let n = problem.items.len();
         let item_efficiencies = efficiency_ordering(problem);
-        let break_solution = initial_bounds(problem, &item_efficiencies);
+        let (break_solution, decision) = initial_bounds(problem, &item_efficiencies);
         let lower_bound = break_solution.profit;
         let b = break_solution.break_item;
         let s = b;
         let t = b - 1;
 
         Instance {
+            decision,
+            item_order: Vec::with_capacity(n),
             item_efficiencies,
             break_solution,
             problem,
@@ -159,8 +165,14 @@ impl<'a> Instance<'a> {
         self.problem.items[index]
     }
 
+    fn add_to_item_order(&mut self, ordered_index: usize) {
+        let index = self.item_efficiencies[ordered_index].index;
+        self.item_order.push(index);
+    }
+
     fn add_item_t(&mut self, current_states: &HashSet<State>, next_states: &mut HashSet<State>) {
         //println!("  add_item {}", self.t);
+        self.add_to_item_order(self.t);
         let item = self.item(self.t);
         for s in current_states {
             // State if we add item
@@ -179,6 +191,7 @@ impl<'a> Instance<'a> {
 
     fn remove_item_s(&mut self, current_states: &HashSet<State>, next_states: &mut HashSet<State>) {
         //println!("  remove_item {}", self.s);
+        self.add_to_item_order(self.s);
         let item = self.item(self.s);
         for s in current_states {
             // State if we add item
