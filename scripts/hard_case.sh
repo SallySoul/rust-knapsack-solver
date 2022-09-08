@@ -1,4 +1,4 @@
-OUTPUT_DIR="/Users/russell/projects/courses/cse5707/rust-knapsack-solver/temp/hard_cases_3"
+OUTPUT_DIR="/mnt/c/Users/blake/Documents/rust-knapsack-solver/hard_cases"
 
 rm -r "${OUTPUT_DIR}"
 mkdir "${OUTPUT_DIR}"

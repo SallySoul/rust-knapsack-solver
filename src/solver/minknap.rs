@@ -1,7 +1,7 @@
 use crate::solver::problem::*;
 use crate::solver::sol_tree::*;
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 
 #[derive(Debug)]
 struct ItemEfficiency {
