@@ -180,6 +180,26 @@ impl<'a> Instance<'a> {
         self.item_order.push(index);
     }
 
+    fn add_state_check_bound(
+        &mut self,
+        s: StateKey,
+        sol: SolCrumb,
+        next_states: &mut HashMap<StateKey, SolCrumb>,
+    ) {
+        if s.c <= self.problem_capacity() && s.p > self.lower_bound {
+            self.lower_bound = s.p;
+            self.best_sol = sol;
+            self.best_sol_level = self.sol_level + 1;
+            self.best_sol_item = self.item_order.len() - 1;
+            self.best_sol_weight = s.c;
+            println!(
+                "New lower_bound, value: {}, item (visit order): {}",
+                self.lower_bound, self.best_sol_item
+            );
+        }
+        next_states.insert(s, sol);
+    }
+
     fn add_item_t(
         &mut self,
         current_states: &HashMap<StateKey, SolCrumb>,
@@ -194,15 +214,17 @@ impl<'a> Instance<'a> {
                 let new_capacity = s.c + item.weight;
                 let mut new_sol = *sol;
                 new_sol.add_decision(true);
-                next_states.insert(
+                self.add_state_check_bound(
                     StateKey {
                         p: new_profit,
                         c: new_capacity,
                     },
                     new_sol,
+                    next_states,
                 );
             }
             // Keep things as they are
+            // no need to check for lower_bound
             let mut old_sol = *sol;
             old_sol.add_decision(false);
             next_states.insert(*s, old_sol);
@@ -223,12 +245,13 @@ impl<'a> Instance<'a> {
                 let new_capacity = s.c - item.weight;
                 let mut new_sol = *sol;
                 new_sol.add_decision(true);
-                next_states.insert(
+                self.add_state_check_bound(
                     StateKey {
                         p: new_profit,
                         c: new_capacity,
                     },
                     new_sol,
+                    next_states,
                 );
             }
 
@@ -246,21 +269,6 @@ impl<'a> Instance<'a> {
     ) {
         self.state_counter += next_states.len();
         self.max_iter_state = self.max_iter_state.max(next_states.len());
-
-        // Update lower bound
-        for (s, sol) in next_states.iter() {
-            if s.c <= self.problem_capacity() && s.p > self.lower_bound {
-                self.lower_bound = s.p;
-                self.best_sol = *sol;
-                self.best_sol_level = self.sol_level + 1;
-                self.best_sol_item = self.item_order.len() - 1;
-                self.best_sol_weight = s.c;
-                println!(
-                    "New lower_bound, value: {}, item (visit order): {}",
-                    self.lower_bound, self.best_sol_item
-                );
-            }
-        }
 
         // Filter states by comparing their upperbound with global lower bound
         current_states.clear();
@@ -349,7 +357,6 @@ impl<'a> Instance<'a> {
                 self.remove_item_s(&current_states, &mut next_states);
                 self.reduce_states(&mut current_states, &mut next_states);
                 self.backup_solution_history(&mut sol_tree, &mut current_states);
-
                 i += 1;
             }
         }
