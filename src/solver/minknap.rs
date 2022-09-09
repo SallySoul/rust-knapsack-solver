@@ -192,10 +192,6 @@ impl<'a> Instance<'a> {
             self.best_sol_level = self.sol_level + 1;
             self.best_sol_item = self.item_order.len() - 1;
             self.best_sol_weight = s.c;
-            println!(
-                "New lower_bound, value: {}, item (visit order): {}",
-                self.lower_bound, self.best_sol_item
-            );
         }
         next_states.insert(s, sol);
     }
@@ -313,6 +309,25 @@ impl<'a> Instance<'a> {
         }
     }
 
+    fn print_final_update(
+        &self,
+        i: usize,
+        current_states: &HashMap<StateKey, SolCrumb>,
+        sol_tree: &SolTree,
+    ) {
+        let n = self.item_count();
+        // Scale gaps between iteration based on size of i
+        let core_width = (self.t - self.s) + 1;
+        let core_percentage = 100.0 * (core_width as f32 / n as f32);
+        println!(
+            "Final Iteration i: {}, active states: {}, sol tree size: {}, core_size: %{:.4}",
+            i,
+            current_states.len(),
+            sol_tree.len(),
+            core_percentage,
+        );
+    }
+
     fn backup_solution_history(
         &mut self,
         sol_tree: &mut SolTree,
@@ -360,6 +375,7 @@ impl<'a> Instance<'a> {
                 i += 1;
             }
         }
+        self.print_final_update(i, &current_states, &sol_tree);
         self.backtrack_decision(&mut sol_tree);
     }
 }

@@ -1,8 +1,7 @@
 use crate::solver::problem::*;
 
-// Pre-emptivley catch large
-// TODO: make this more sensible / configurable?
-pub const MAX_STATES: usize = 1000000;
+// Like 8gb
+pub const MAX_STATES: usize = (8 * 1000000000) / std::mem::size_of::<usize>();
 
 struct Array {
     data: Vec<usize>,
@@ -13,7 +12,7 @@ impl Array {
     fn new(width: usize, height: usize) -> Array {
         let size = width * height;
         if size > MAX_STATES {
-            panic!("Problem exceeds size limit");
+            panic!("Problem exceeds size limit: {} > {}", size, MAX_STATES);
         }
 
         println!("Array size: {}", size);
