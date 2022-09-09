@@ -204,6 +204,9 @@ impl<'a> Instance<'a> {
         self.add_to_item_order(self.t);
         let item = self.item(self.t);
         for (s, sol) in current_states {
+            if self.upper_bound(s) <= self.lower_bound + 1 {
+                continue;
+            }
             // State if we add item
             if s.c + item.weight < 2 * self.problem_capacity() {
                 let new_profit = s.p + item.value;
@@ -235,6 +238,10 @@ impl<'a> Instance<'a> {
         self.add_to_item_order(self.s);
         let item = self.item(self.s);
         for (s, sol) in current_states {
+            if self.upper_bound(s) <= self.lower_bound + 1 {
+                continue;
+            }
+
             // State if we add item
             if s.c >= item.weight {
                 let new_profit = s.p - item.value;
@@ -258,21 +265,13 @@ impl<'a> Instance<'a> {
         }
     }
 
-    fn reduce_states(
+    fn swap_state_maps(
         &mut self,
         current_states: &mut HashMap<StateKey, SolCrumb>,
         next_states: &mut HashMap<StateKey, SolCrumb>,
     ) {
-        self.state_counter += next_states.len();
-        self.max_iter_state = self.max_iter_state.max(next_states.len());
-
-        // Filter states by comparing their upperbound with global lower bound
         current_states.clear();
-        current_states.extend(
-            next_states
-                .drain()
-                .filter(|(s, _)| self.upper_bound(s) > self.lower_bound + 1),
-        );
+        std::mem::swap(current_states, next_states);
     }
 
     fn backtrack_decision(&mut self, sol_tree: &mut SolTree) {
@@ -362,7 +361,7 @@ impl<'a> Instance<'a> {
             if self.t < n - 1 {
                 self.t += 1;
                 self.add_item_t(&current_states, &mut next_states);
-                self.reduce_states(&mut current_states, &mut next_states);
+                self.swap_state_maps(&mut current_states, &mut next_states);
                 self.backup_solution_history(&mut sol_tree, &mut current_states);
                 i += 1;
             }
@@ -370,7 +369,7 @@ impl<'a> Instance<'a> {
             if self.s > 0 {
                 self.s -= 1;
                 self.remove_item_s(&current_states, &mut next_states);
-                self.reduce_states(&mut current_states, &mut next_states);
+                self.swap_state_maps(&mut current_states, &mut next_states);
                 self.backup_solution_history(&mut sol_tree, &mut current_states);
                 i += 1;
             }
