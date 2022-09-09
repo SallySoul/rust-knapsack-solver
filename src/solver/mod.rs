@@ -73,8 +73,8 @@ pub fn run(options: &Options) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!(
-        "Solver Used: {:?}, Solution Value: {}, Target Capacity: {}",
-        options.solver, solution.value, problem.capacity,
+        "Solver Used: {:?}, Solution Value: {}, Solution Weight: {}, Target Capacity: {}, Unused Capacity: {}",
+        options.solver, solution.value, solution.weight, problem.capacity, problem.capacity - solution.weight
     );
 
     Ok(())

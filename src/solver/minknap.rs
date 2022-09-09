@@ -90,6 +90,7 @@ pub struct StateValue {
 }
 
 pub struct Instance<'a> {
+    best_sol_weight: usize,
     best_sol_item: usize,
     best_sol_level: usize,
     best_sol: SolCrumb,
@@ -117,6 +118,7 @@ impl<'a> Instance<'a> {
         let t = b - 1;
 
         Instance {
+            best_sol_weight: 0,
             best_sol_level: 0,
             best_sol_item: 0,
             best_sol: SolCrumb::new(0),
@@ -258,6 +260,11 @@ impl<'a> Instance<'a> {
                 self.best_sol = value.sol;
                 self.best_sol_level = self.sol_level + 1;
                 self.best_sol_item = self.item_order.len() - 1;
+                self.best_sol_weight = s.c;
+                println!(
+                    "New lower_bound, value: {}, item (visit order): {}",
+                    self.lower_bound, self.best_sol_item
+                );
             }
         }
 
@@ -274,7 +281,7 @@ impl<'a> Instance<'a> {
             current_states.extend(
                 next_states
                     .drain()
-                    .filter(|(s, _)| self.upper_bound(s) > self.lower_bound)
+                    .filter(|(s, _)| self.upper_bound(s) > self.lower_bound + 1)
                     .map(|(s, mut v)| {
                         sol_tree.fresh_crumb(&mut v.sol);
                         (s, v)
@@ -285,7 +292,7 @@ impl<'a> Instance<'a> {
             current_states.extend(
                 next_states
                     .drain()
-                    .filter(|(s, _)| self.upper_bound(s) > self.lower_bound),
+                    .filter(|(s, _)| self.upper_bound(s) > self.lower_bound + 1),
             );
         }
     }
@@ -300,6 +307,28 @@ impl<'a> Instance<'a> {
             &self.item_order,
             &mut self.decision,
         );
+    }
+
+    fn print_update(
+        &self,
+        i: usize,
+        current_states: &HashMap<StateKey, StateValue>,
+        sol_tree: &SolTree,
+    ) {
+        let n = self.item_count();
+        // Scale gaps between iteration based on size of i
+        let m = usize::pow(10, (i as f64).log10().floor() as u32);
+        if i != 0 && (i < 10 || i % m == 0) {
+            let core_width = (self.t - self.s) + 1;
+            let core_percentage = 100.0 * (core_width as f32 / n as f32);
+            println!(
+                "Iteration i: {}, active states: {}, sol tree size: {}, core_size: %{:.4}",
+                i,
+                current_states.len(),
+                sol_tree.len(),
+                core_percentage,
+            );
+        }
     }
 
     fn solve(&mut self) {
@@ -319,19 +348,8 @@ impl<'a> Instance<'a> {
 
         let mut sol_tree = SolTree::new();
         while !current_states.is_empty() && i < n {
-            if i % 5 == 0 {
-                let core_width = (self.t - self.s) + 1;
-                let core_percentage = 100.0 * (core_width as f32 / n as f32);
-                println!(
-                    "Iteration i: {}, active states: {}, sol tree size: {}, core_size: %{:.4}",
-                    i,
-                    current_states.len(),
-                    sol_tree.len(),
-                    core_percentage,
-                );
-            }
+            self.print_update(i, &current_states, &sol_tree);
 
-            let n = self.item_count();
             if self.t < n - 1 {
                 self.t += 1;
                 self.add_item_t(&current_states, &mut next_states);
@@ -356,5 +374,6 @@ pub fn solve(problem: &Problem) -> Result<Solution, Box<dyn std::error::Error>> 
     Ok(Solution {
         decision: instance.decision,
         value: instance.lower_bound,
+        weight: instance.best_sol_weight,
     })
 }

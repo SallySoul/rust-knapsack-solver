@@ -80,8 +80,16 @@ pub fn solve(problem: &Problem) -> Solution {
         }
     }
 
+    let mut weight_sum = 0;
+    for (d, i) in decision.iter().zip(problem.items.iter()) {
+        if *d {
+            weight_sum += i.weight;
+        }
+    }
+
     Solution {
         decision,
         value: sum_array.last(),
+        weight: weight_sum,
     }
 }

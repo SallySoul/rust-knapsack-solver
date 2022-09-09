@@ -50,16 +50,19 @@ impl Problem {
 pub struct Solution {
     pub decision: Vec<bool>,
     pub value: usize,
+    pub weight: usize,
 }
 
 impl Solution {
     pub fn validate(&self, problem: &Problem) -> bool {
-        let mut sum = 0;
+        let mut value_sum = 0;
+        let mut weight_sum = 0;
         for (d, i) in self.decision.iter().zip(problem.items.iter()) {
             if *d {
-                sum += i.value;
+                value_sum += i.value;
+                weight_sum += i.weight;
             }
         }
-        sum == self.value
+        value_sum == self.value && weight_sum == self.weight
     }
 }
