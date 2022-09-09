@@ -263,33 +263,13 @@ impl<'a> Instance<'a> {
             }
         }
 
-        // Every reduce states call follows a decision for each state
-        // We put this logic for icrementing the sol level here
-        // Becuase hashsets have no mutable iterator
-        // So we modify all the states as we filter them
-        // With the added bonus of only saving history
-        // for states that we're gonna keep
-        self.sol_level += 1;
-        if self.sol_level >= 64 {
-            self.sol_level = 0;
-            current_states.clear();
-            current_states.extend(
-                next_states
-                    .drain()
-                    .filter(|(s, _)| self.upper_bound(s) > self.lower_bound + 1)
-                    .map(|(s, mut sol)| {
-                        sol_tree.fresh_crumb(&mut sol);
-                        (s, sol)
-                    }),
-            );
-        } else {
-            current_states.clear();
-            current_states.extend(
-                next_states
-                    .drain()
-                    .filter(|(s, _)| self.upper_bound(s) > self.lower_bound + 1),
-            );
-        }
+        // Filter states by comparing their upperbound with global lower bound
+        current_states.clear();
+        current_states.extend(
+            next_states
+                .drain()
+                .filter(|(s, _)| self.upper_bound(s) > self.lower_bound + 1),
+        );
     }
 
     fn backtrack_decision(&mut self, sol_tree: &mut SolTree) {
@@ -326,6 +306,20 @@ impl<'a> Instance<'a> {
         }
     }
 
+    fn backup_solution_history(
+        &mut self,
+        sol_tree: &mut SolTree,
+        current_states: &mut HashMap<StateKey, SolCrumb>,
+    ) {
+        self.sol_level += 1;
+        if self.sol_level >= 64 {
+            self.sol_level = 0;
+            for sol in current_states.values_mut() {
+                sol_tree.fresh_crumb(sol);
+            }
+        }
+    }
+
     fn solve(&mut self) {
         let mut current_states = HashMap::new();
         let mut next_states = HashMap::new();
@@ -347,6 +341,7 @@ impl<'a> Instance<'a> {
                 self.t += 1;
                 self.add_item_t(&current_states, &mut next_states);
                 self.reduce_states(&mut sol_tree, &mut current_states, &mut next_states);
+                self.backup_solution_history(&mut sol_tree, &mut current_states);
                 i += 1;
             }
 
@@ -354,6 +349,8 @@ impl<'a> Instance<'a> {
                 self.s -= 1;
                 self.remove_item_s(&current_states, &mut next_states);
                 self.reduce_states(&mut sol_tree, &mut current_states, &mut next_states);
+                self.backup_solution_history(&mut sol_tree, &mut current_states);
+
                 i += 1;
             }
         }
