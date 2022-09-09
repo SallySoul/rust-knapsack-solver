@@ -241,7 +241,6 @@ impl<'a> Instance<'a> {
 
     fn reduce_states(
         &mut self,
-        sol_tree: &mut SolTree,
         current_states: &mut HashMap<StateKey, SolCrumb>,
         next_states: &mut HashMap<StateKey, SolCrumb>,
     ) {
@@ -340,7 +339,7 @@ impl<'a> Instance<'a> {
             if self.t < n - 1 {
                 self.t += 1;
                 self.add_item_t(&current_states, &mut next_states);
-                self.reduce_states(&mut sol_tree, &mut current_states, &mut next_states);
+                self.reduce_states(&mut current_states, &mut next_states);
                 self.backup_solution_history(&mut sol_tree, &mut current_states);
                 i += 1;
             }
@@ -348,7 +347,7 @@ impl<'a> Instance<'a> {
             if self.s > 0 {
                 self.s -= 1;
                 self.remove_item_s(&current_states, &mut next_states);
-                self.reduce_states(&mut sol_tree, &mut current_states, &mut next_states);
+                self.reduce_states(&mut current_states, &mut next_states);
                 self.backup_solution_history(&mut sol_tree, &mut current_states);
 
                 i += 1;
