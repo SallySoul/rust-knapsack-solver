@@ -75,6 +75,13 @@ fn initial_bounds(
         i += 1;
     }
 
+    // Edge case, all items in solution
+    if i == item_count {
+        result.break_item = item_count;
+        result.profit = profit_sum;
+        result.weight = weight_sum;
+    }
+
     (result, decision)
 }
 
@@ -342,6 +349,13 @@ impl<'a> Instance<'a> {
     }
 
     fn solve(&mut self) {
+        // Edge case where all items are in solution
+        // Just return break solution
+        if self.break_solution.break_item == self.item_count() {
+            self.best_sol_weight = self.break_solution.weight;
+            return;
+        }
+
         let mut current_states = HashMap::new();
         let mut next_states = HashMap::new();
         let n = self.item_count();

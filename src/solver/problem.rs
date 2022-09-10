@@ -63,6 +63,14 @@ impl Solution {
                 weight_sum += i.weight;
             }
         }
+    
+        if value_sum != self.value {
+            println!("Solution::validate, value does not match!");
+        }
+        if weight_sum != self.weight {
+            println!("Solution::validate, weight does not match!");
+        }
+
         value_sum == self.value && weight_sum == self.weight
     }
 }
