@@ -27,7 +27,7 @@ fn efficiency_ordering(problem: &Problem) -> Vec<ItemEfficiency> {
 
     // We want Highest ratio to lowest
     // Hence b cmp a
-    item_efficiencies.sort_unstable_by(|a, b| b.efficiency.partial_cmp(&a.efficiency).unwrap());
+    item_efficiencies.sort_by(|a, b| b.efficiency.partial_cmp(&a.efficiency).unwrap());
 
     item_efficiencies
 }
@@ -192,6 +192,7 @@ impl<'a> Instance<'a> {
             self.best_sol_level = self.sol_level + 1;
             self.best_sol_item = self.item_order.len() - 1;
             self.best_sol_weight = s.c;
+            println!("New lower bound found, {}, weight: {}, sol: {:064b}", self.lower_bound, self.best_sol_weight, self.best_sol.recent);
         }
         next_states.insert(s, sol);
     }
@@ -204,7 +205,7 @@ impl<'a> Instance<'a> {
         self.add_to_item_order(self.t);
         let item = self.item(self.t);
         for (s, sol) in current_states {
-            if self.upper_bound(s) <= self.lower_bound + 1 {
+            if self.upper_bound(s) <= self.lower_bound {
                 continue;
             }
             // State if we add item
@@ -294,7 +295,7 @@ impl<'a> Instance<'a> {
     ) {
         let n = self.item_count();
         // Scale gaps between iteration based on size of i
-        let m = usize::pow(10, (i as f64).log10().floor() as u32);
+        let m = usize::pow(10, (i as f32).log10().floor() as u32);
         if i != 0 && (i < 10 || i % m == 0) {
             let core_width = (self.t - self.s) + 1;
             let core_percentage = 100.0 * (core_width as f32 / n as f32);
@@ -366,12 +367,20 @@ impl<'a> Instance<'a> {
                 i += 1;
             }
 
+            if self.best_sol_weight == self.problem.capacity {
+                break;
+            }
+
             if self.s > 0 {
                 self.s -= 1;
                 self.remove_item_s(&current_states, &mut next_states);
                 self.swap_state_maps(&mut current_states, &mut next_states);
                 self.backup_solution_history(&mut sol_tree, &mut current_states);
                 i += 1;
+            }
+
+            if self.best_sol_weight == self.problem.capacity {
+                break;
             }
         }
         self.print_final_update(i, &current_states, &sol_tree);
