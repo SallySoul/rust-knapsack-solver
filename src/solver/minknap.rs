@@ -238,7 +238,7 @@ impl<'a> Instance<'a> {
         self.add_to_item_order(self.s);
         let item = self.item(self.s);
         for (s, sol) in current_states {
-            if self.upper_bound(s) <= self.lower_bound + 1 {
+            if self.upper_bound(s) <= self.lower_bound {
                 continue;
             }
 
