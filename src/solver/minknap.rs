@@ -27,7 +27,7 @@ fn efficiency_ordering(problem: &Problem) -> Vec<ItemEfficiency> {
 
     // We want Highest ratio to lowest
     // Hence b cmp a
-    item_efficiencies.sort_by(|a, b| b.efficiency.partial_cmp(&a.efficiency).unwrap());
+    item_efficiencies.sort_unstable_by(|a, b| b.efficiency.partial_cmp(&a.efficiency).unwrap());
 
     item_efficiencies
 }
@@ -98,8 +98,6 @@ pub struct Instance<'a> {
     s: usize,
     t: usize,
     lower_bound: usize,
-    state_counter: usize,
-    max_iter_state: usize,
 }
 
 impl<'a> Instance<'a> {
@@ -126,8 +124,6 @@ impl<'a> Instance<'a> {
             s,
             t,
             lower_bound,
-            state_counter: 0,
-            max_iter_state: 0,
         }
     }
 
@@ -192,7 +188,10 @@ impl<'a> Instance<'a> {
             self.best_sol_level = self.sol_level + 1;
             self.best_sol_item = self.item_order.len() - 1;
             self.best_sol_weight = s.c;
-            println!("New lower bound found, {}, weight: {}, sol: {:064b}", self.lower_bound, self.best_sol_weight, self.best_sol.recent);
+            println!(
+                "New lower bound found, {}, weight: {}, sol: {:064b}",
+                self.lower_bound, self.best_sol_weight, self.best_sol.recent
+            );
         }
         next_states.insert(s, sol);
     }
