@@ -138,6 +138,9 @@ impl<'a> Instance<'a> {
         self.problem.capacity
     }
 
+    // We calculate the upper bound by relaxing the integer
+    // decision constraint. The best we can do with linear decisions
+    // is to add or remove some ammount of the next most efficient / in-efficient item
     fn upper_bound(&self, s: &StateKey) -> usize {
         let n = self.item_count();
         if s.c <= self.problem_capacity() {
