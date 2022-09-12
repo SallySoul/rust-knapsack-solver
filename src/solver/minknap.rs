@@ -402,7 +402,7 @@ impl<'a> Instance<'a> {
                 let change_weight = change_state.w - item.weight;
 
                 // This is a dominated state and we can skip
-                debug_assert!(change_state.p > item.value);
+                debug_assert!(change_state.p >= item.value);
                 let change_profit = change_state.p - item.value;
                 if !next_states.is_empty() && change_profit <= last_profit(next_states) {
                     change_index += 1;

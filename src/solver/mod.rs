@@ -11,6 +11,7 @@ use clap::Parser;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
+use std::time::Instant;
 
 arg_enum! {
 /// The different solver implementations that are available
@@ -50,13 +51,15 @@ pub fn run(options: &Options) -> Result<(), Box<dyn std::error::Error>> {
         problem = Problem::read(input_reader)?
     };
 
+    let start_time = Instant::now();
+
     let solution = match options.solver {
         Solver::Greedy => greedy::solve(&problem),
         Solver::Dynamic => dynamic::solve(&problem),
         Solver::Minknap => minknap::solve(&problem)?,
     };
 
-    let greedy_sol = greedy::solve(&problem);
+    let solve_time = start_time.elapsed().as_millis() as f32 / 1000.0;
 
     if !solution.validate(&problem) {
         panic!("ERROR: Solution is not valid!");
@@ -66,15 +69,15 @@ pub fn run(options: &Options) -> Result<(), Box<dyn std::error::Error>> {
         println!("Id\tDecision\tGD");
         for i in 0..problem.items.len() {
             println!(
-                "{}\t{}\t{}",
-                problem.items[i].id, solution.decision[i] as u8, greedy_sol.decision[i]
+                "{}\t{}",
+                problem.items[i].id, solution.decision[i] as u8
             );
         }
     }
 
     println!(
-        "Solver Used: {:?}, Solution Value: {}, Solution Weight: {}, Target Capacity: {}, Unused Capacity: {}",
-        options.solver, solution.value, solution.weight, problem.capacity, problem.capacity - solution.weight
+        "Solver Used: {:?}, Solution Value: {}, Solution Weight: {}, Target Capacity: {}, Unused Capacity: {}, Time Elapsed: {}",
+        options.solver, solution.value, solution.weight, problem.capacity, problem.capacity - solution.weight, solve_time,
     );
 
     Ok(())
