@@ -68,10 +68,7 @@ pub fn run(options: &Options) -> Result<(), Box<dyn std::error::Error>> {
     if !options.no_print_solution {
         println!("Id\tDecision\tGD");
         for i in 0..problem.items.len() {
-            println!(
-                "{}\t{}",
-                problem.items[i].id, solution.decision[i] as u8
-            );
+            println!("{}\t{}", problem.items[i].id, solution.decision[i] as u8);
         }
     }
 
