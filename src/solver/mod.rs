@@ -67,7 +67,7 @@ pub fn run(options: &Options) -> Result<(), Box<dyn std::error::Error>> {
         for i in 0..problem.items.len() {
             println!(
                 "{}\t{}\t{}",
-                problem.items[i].id, solution.decision[i], greedy_sol.decision[i]
+                problem.items[i].id, solution.decision[i] as u8, greedy_sol.decision[i]
             );
         }
     }

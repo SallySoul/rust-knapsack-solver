@@ -87,13 +87,13 @@ fn initial_bounds(
 
 /// Utility function for add and remove item funtions
 /// only use when next_states is known to not be empty
-fn last_profit(next_state: &mut Vec<State>) -> usize {
+fn last_profit(next_state: &[State]) -> usize {
     next_state.last().unwrap().p
 }
 
 /// Utility function for add and remove item funtions
 /// only use when next_states is known to not be empty
-fn last_weight(next_state: &mut Vec<State>) -> usize {
+fn last_weight(next_state: &[State]) -> usize {
     next_state.last().unwrap().w
 }
 
@@ -134,6 +134,7 @@ pub struct Instance<'a> {
     max_state_weight: usize,
     last_log_update: std::time::Instant,
     bytes_used: usize,
+    states_explored: usize,
 }
 
 impl<'a> Instance<'a> {
@@ -169,6 +170,7 @@ impl<'a> Instance<'a> {
             max_state_weight,
             last_log_update: std::time::Instant::now(),
             bytes_used,
+            states_explored: 0,
         }
     }
 
@@ -445,9 +447,10 @@ impl<'a> Instance<'a> {
     ) {
         current_states.clear();
         std::mem::swap(current_states, next_states);
+        self.states_explored += current_states.len();
     }
 
-    fn backtrack_decision(&mut self, sol_tree: &mut SolTree) {
+    fn backtrack_decision(&mut self, sol_tree: &SolTree) {
         // Return item order to where it was when best Solution
         // was last updated
         self.item_order.drain(self.best_sol_item + 1..);
@@ -510,9 +513,9 @@ impl<'a> Instance<'a> {
         let bytes_estimate = self.bytes_estimate(current_states, next_states, sol_tree);
         let hr_bytes = human_readable_bytes(bytes_estimate);
         println!(
-            "iteration i: {}, active states: {}, core_size: %{:.4}, mem_used: {} ({} bytes)",
+            "final i: {}, states_explored: {}, core_size: %{:.4}, mem_used: {} ({} bytes)",
             i,
-            current_states.len(),
+            self.states_explored,
             core_percentage,
             hr_bytes,
             bytes_estimate,
@@ -576,7 +579,7 @@ impl<'a> Instance<'a> {
             }
         }
         self.print_final_update(i, &current_states, &next_states, &sol_tree);
-        self.backtrack_decision(&mut sol_tree);
+        self.backtrack_decision(&sol_tree);
     }
 }
 
