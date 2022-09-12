@@ -19,7 +19,9 @@ piping the problem in through stdin
 cat test_assets/random_400k.txt | ./target/release/rust-knapsack-solver solve
 ```
 
-The tool and its two subcommands also support the `-h / --help` flags, which well display
+Note that printing the decision vector for large problems can take some time. To skip this (the decision vector will still be calculated and validated), pass `-n / --no-print-solution` as well.
+
+The tool and its two subcommands also support the `-h / --help` flags, which will display
 information about additional options.
 
 There are additional tests in `test_assets`.
