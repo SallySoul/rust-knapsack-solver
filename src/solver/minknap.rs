@@ -226,10 +226,12 @@ impl<'a> Instance<'a> {
             self.best_sol_level = self.sol_level + 1;
             self.best_sol_item = self.item_order.len() - 1;
             self.best_sol_weight = s.w;
+            /*
             println!(
                 "New lower bound found, {}, weight: {}, sol: {:064b}",
                 self.lower_bound, self.best_sol_weight, self.best_sol.recent
             );
+            */
         }
     }
 
