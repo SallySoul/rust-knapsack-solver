@@ -246,17 +246,11 @@ impl<'a> Instance<'a> {
         self.add_to_item_order(self.t);
         let item = self.item(self.t);
         let n = self.item_count();
+        let state_count = current_states.len();
         let mut change_index = 0;
         let mut keep_index = 0;
-        while change_index != n || keep_index != n {
-            println!(
-                "current_states_len: {}, keep_index: {}, change_index: {}",
-                current_states.len(),
-                keep_index,
-                change_index
-            );
-            debug_assert!(keep_index <= change_index);
-            if change_index >= n
+        while change_index != state_count || keep_index != state_count {
+            if keep_index >= state_count
                 || current_states[keep_index].w > current_states[change_index].w + item.weight
             {
                 let change_state = current_states[change_index];
@@ -309,7 +303,7 @@ impl<'a> Instance<'a> {
                 }
 
                 if !next_states.is_empty() && keep_state.p <= last_profit(next_states) {
-                    debug_assert!(keep_state.w <= last_weight(next_states));
+                    //debug_assert!(keep_state.w <= last_weight(next_states));
                     keep_index += 1;
                     continue;
                 }
@@ -321,7 +315,7 @@ impl<'a> Instance<'a> {
                     new_weight: keep_state.w,
                 });
                 if upper_bound <= self.lower_bound {
-                    change_index += 1;
+                    keep_index += 1;
                     continue;
                 }
 
@@ -341,27 +335,62 @@ impl<'a> Instance<'a> {
     /// Trying removing item at sorted index self.t to the core
     fn remove_item_s(&mut self, current_states: &[State], next_states: &mut Vec<State>) {
         // Similiar to add_item, see comments there
-        self.add_to_item_order(self.t);
-        let item = self.item(self.t);
+        self.add_to_item_order(self.s);
+        let item = self.item(self.s);
         let n = self.item_count();
+        let state_count = current_states.len();
         let mut change_index = 0;
         let mut keep_index = 0;
-        while change_index != n || keep_index != n {
-            let keep_state = current_states[keep_index];
-            let change_state = current_states[change_index];
+        while change_index != state_count || keep_index != state_count {
+            if change_index >= state_count
+                || current_states[keep_index].w <= current_states[change_index].w - item.weight
+            {
+                let keep_state = current_states[keep_index];
+                debug_assert!(keep_index < n);
 
-            debug_assert!(item.weight > change_state.w);
-            let change_weight = change_state.w - item.weight;
-            if change_index >= n || keep_state.w > change_weight {
                 // Don't need to go too far over capacity
-                if change_weight > self.max_state_weight {
-                    change_index += 1;
+                debug_assert!(keep_state.w < self.max_state_weight);
+                if keep_state.w > self.max_state_weight {
+                    keep_index += 1;
                     continue;
                 }
 
                 // This is a dominated state and we can skip
-                debug_assert!(item.value > change_state.p);
-                let change_profit = change_state.p + item.value;
+                if !next_states.is_empty() && keep_state.p <= last_profit(next_states) {
+                    //debug_assert!(keep_state.w <= last_weight(next_states));
+                    keep_index += 1;
+                    continue;
+                }
+
+                // Check upper bound, if <= lower bound we can skip
+                let upper_bound = self.upper_bound(UBCheck {
+                    next_s: self.s + 1,
+                    next_t: self.t,
+                    new_profit: keep_state.p,
+                    new_weight: keep_state.w,
+                });
+                if upper_bound <= self.lower_bound {
+                    keep_index += 1;
+                    continue;
+                }
+
+                let mut new_state = keep_state;
+                new_state.sol.add_decision(false);
+                if !next_states.is_empty() && keep_state.w == last_weight(next_states) {
+                    // We already checked, so profit must be greater
+                    let last_index = next_states.len() - 1;
+                    next_states[last_index] = new_state;
+                } else {
+                    next_states.push(new_state);
+                }
+                keep_index += 1;
+            } else {
+                let change_state = current_states[change_index];
+                let change_weight = change_state.w - item.weight;
+
+                // This is a dominated state and we can skip
+                debug_assert!(change_state.p > item.value);
+                let change_profit = change_state.p - item.value;
                 if !next_states.is_empty() && change_profit <= last_profit(next_states) {
                     change_index += 1;
                     continue;
@@ -394,45 +423,6 @@ impl<'a> Instance<'a> {
                     next_states.push(new_state);
                 }
                 change_index += 1;
-            } else {
-                debug_assert!(keep_index < n);
-
-                // Don't need to go too far over capacity
-                debug_assert!(keep_state.w > self.max_state_weight);
-                if keep_state.w > self.max_state_weight {
-                    keep_index += 1;
-                    continue;
-                }
-
-                // This is a dominated state and we can skip
-                if !next_states.is_empty() && keep_state.p <= last_profit(next_states) {
-                    debug_assert!(keep_state.w <= last_weight(next_states));
-                    keep_index += 1;
-                    continue;
-                }
-
-                // Check upper bound, if <= lower bound we can skip
-                let upper_bound = self.upper_bound(UBCheck {
-                    next_s: self.s + 1,
-                    next_t: self.t,
-                    new_profit: keep_state.p,
-                    new_weight: keep_state.w,
-                });
-                if upper_bound <= self.lower_bound {
-                    change_index += 1;
-                    continue;
-                }
-
-                let mut new_state = keep_state;
-                new_state.sol.add_decision(false);
-                if !next_states.is_empty() && keep_state.w == last_weight(next_states) {
-                    // We already checked, so profit must be greater
-                    let last_index = next_states.len() - 1;
-                    next_states[last_index] = new_state;
-                } else {
-                    next_states.push(new_state);
-                }
-                keep_index += 1;
             }
         }
     }
