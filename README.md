@@ -71,6 +71,9 @@ We opted to compleletly sort the items as this made the code far simpler and is 
 ## Resources used
 
 [1] Pisinger, David (1997) "A Minimal Algorithm For The 0-1 Knapsack Problem"
+
 [2] Pisinger, David (1997) "minkap.c" http://hjemmesider.diku.dk/~pisinger/minknap.c
+
 [3] Fontanf (2022) "knapsacksolver" https://github.com/fontanf/knapsacksolver
+
 [4] Pisinger, David (2004) "Where are the hard knapsack problems?"
