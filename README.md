@@ -68,7 +68,7 @@ A major difference between our implementation and the ones above relates to sort
 The paper describes a technique for doing the minimal ammount of sorting necessary.
 We opted to compleletly sort the items as this made the code far simpler and is relativley cheap computationally.
 
-## Resources used
+## Resources Used
 
 [1] Pisinger, David (1997) "A Minimal Algorithm For The 0-1 Knapsack Problem"
 
