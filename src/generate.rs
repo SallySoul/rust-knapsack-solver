@@ -12,13 +12,14 @@ arg_enum! {
 pub enum Correlation {
     None,
     Some,
+    Strong
 }
 }
 
 #[derive(Parser, Debug)]
 pub struct Options {
     /// How the weight and values of the items should correlate.
-    /// Options are None, and Some
+    /// Options are None, Some, and Strong
     /// If choosing Some, use the coeff argument to determine
     /// ammount of correlation
     #[clap(long, default_value_t = Correlation::None)]
@@ -66,7 +67,8 @@ pub fn run(options: &Options) -> Result<(), Box<dyn std::error::Error>> {
     writeln!(output_writer, "{}", options.item_count)?;
     let weight_sum = match options.correlation {
         Correlation::None => write_no_correlation(options, &mut output_writer, &mut rng)?,
-        Correlation::Some => write_correlation(options, &mut output_writer, &mut rng)?,
+        Correlation::Some => write_almost_strong_correlation(options, &mut output_writer, &mut rng)?,
+        Correlation::Strong => write_strong_correlation(options, &mut output_writer, &mut rng)?,
     };
 
     let capacity = if let Some(c) = options.capacity {
@@ -97,7 +99,7 @@ fn write_no_correlation<O: std::io::Write>(
     Ok(weight_sum)
 }
 
-fn write_correlation<O: std::io::Write>(
+fn write_almost_strong_correlation<O: std::io::Write>(
     options: &Options,
     output: &mut O,
     rng: &mut ThreadRng,
@@ -125,6 +127,25 @@ fn write_correlation<O: std::io::Write>(
                 value_t, weight_t, value, weight
             );
         }
+        writeln!(output, "{} {} {}", id, value, weight)?;
+    }
+    Ok(weight_sum)
+}
+
+fn write_strong_correlation<O: std::io::Write>(
+    options: &Options,
+    output: &mut O,
+    rng: &mut ThreadRng,
+) -> Result<usize, Box<dyn std::error::Error>> {
+    let weight_distribution = Uniform::from(1..options.weight_bound);
+    let value_offset = options.weight_bound / 10;
+    let mut weight_sum = 0;
+    for id in 0..options.item_count {
+        let weight = weight_distribution.sample(rng);
+        let value = weight + value_offset;
+        
+        weight_sum += weight;
+
         writeln!(output, "{} {} {}", id, value, weight)?;
     }
     Ok(weight_sum)
