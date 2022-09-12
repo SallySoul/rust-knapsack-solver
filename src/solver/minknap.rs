@@ -14,6 +14,7 @@ fn efficiency_ordering(problem: &Problem) -> Vec<ItemEfficiency> {
         .items
         .iter()
         .enumerate()
+        .filter(|(_, item)| {item.weight <= problem.capacity})
         .map(|(index, item)| {
             if item.weight == 0 {
                 panic!("Items with zero weight are not supported");
@@ -43,7 +44,7 @@ fn initial_bounds(
     problem: &Problem,
     item_efficiencies: &[ItemEfficiency],
 ) -> (BreakSolution, Vec<bool>) {
-    let item_count = problem.items.len();
+    let item_count = item_efficiencies.len();
     let mut result = BreakSolution {
         break_item: 0,
         profit: 0,
@@ -139,8 +140,8 @@ pub struct Instance<'a> {
 
 impl<'a> Instance<'a> {
     fn new(problem: &Problem) -> Instance {
-        let n = problem.items.len();
         let item_efficiencies = efficiency_ordering(problem);
+        let n = item_efficiencies.len();
         let (break_solution, decision) = initial_bounds(problem, &item_efficiencies);
         let lower_bound = break_solution.profit;
         let b = break_solution.break_item;
@@ -175,7 +176,7 @@ impl<'a> Instance<'a> {
     }
 
     fn item_count(&self) -> usize {
-        self.problem.items.len()
+        self.item_efficiencies.len()
     }
 
     fn problem_capacity(&self) -> usize {
@@ -346,7 +347,7 @@ impl<'a> Instance<'a> {
         }
     }
 
-    /// Trying removing item at sorted index self.t to the core
+    /// Trying removing item at sorted index self.s to the core
     fn remove_item_s(&mut self, current_states: &[State], next_states: &mut Vec<State>) {
         // Similiar to add_item, see comments there
         self.add_to_item_order(self.s);
