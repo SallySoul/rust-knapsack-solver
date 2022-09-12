@@ -1,5 +1,7 @@
+use crate::converter::*;
 use crate::solver::problem::*;
 use crate::solver::sol_tree::*;
+use std::mem::size_of;
 
 #[derive(Debug)]
 struct ItemEfficiency {
@@ -130,6 +132,8 @@ pub struct Instance<'a> {
     t: usize,
     lower_bound: usize,
     max_state_weight: usize,
+    last_log_update: std::time::Instant,
+    bytes_used: usize,
 }
 
 impl<'a> Instance<'a> {
@@ -141,7 +145,12 @@ impl<'a> Instance<'a> {
         let b = break_solution.break_item;
         let s = b;
         let t = b - 1;
-        let max_state_weight = 2 * problem.capacity;
+        let max_state_weight = problem.capacity + break_solution.weight;
+        let bytes_used = size_of::<Instance>()
+            + size_of::<Problem>()
+            + (decision.capacity() * size_of::<bool>())
+            + (item_efficiencies.capacity() * size_of::<ItemEfficiency>())
+            + (problem.items.capacity() * size_of::<Item>());
 
         Instance {
             best_sol_weight: 0,
@@ -158,6 +167,8 @@ impl<'a> Instance<'a> {
             t,
             lower_bound,
             max_state_weight,
+            last_log_update: std::time::Instant::now(),
+            bytes_used,
         }
     }
 
@@ -247,7 +258,6 @@ impl<'a> Instance<'a> {
         // than the current next state, it is "dominated" and can be discarded
         self.add_to_item_order(self.t);
         let item = self.item(self.t);
-        let n = self.item_count();
         let state_count = current_states.len();
         let mut change_index = 0;
         let mut keep_index = 0;
@@ -297,7 +307,7 @@ impl<'a> Instance<'a> {
                 change_index += 1;
             } else {
                 let keep_state = current_states[keep_index];
-                debug_assert!(keep_index < n);
+                debug_assert!(keep_index < state_count);
                 debug_assert!(keep_state.w <= self.max_state_weight);
                 if keep_state.w > self.max_state_weight {
                     keep_index += 1;
@@ -339,7 +349,6 @@ impl<'a> Instance<'a> {
         // Similiar to add_item, see comments there
         self.add_to_item_order(self.s);
         let item = self.item(self.s);
-        let n = self.item_count();
         let state_count = current_states.len();
         let mut change_index = 0;
         let mut keep_index = 0;
@@ -348,7 +357,7 @@ impl<'a> Instance<'a> {
                 || current_states[keep_index].w <= current_states[change_index].w - item.weight
             {
                 let keep_state = current_states[keep_index];
-                debug_assert!(keep_index < n);
+                debug_assert!(keep_index < state_count);
 
                 // Don't need to go too far over capacity
                 debug_assert!(keep_state.w < self.max_state_weight);
@@ -450,34 +459,63 @@ impl<'a> Instance<'a> {
         );
     }
 
-    fn print_update(&self, i: usize, current_states: &[State], sol_tree: &SolTree) {
+    fn bytes_estimate(&mut self,
+        current_states: &Vec<State>,
+        next_states: &Vec<State>,
+        sol_tree: &SolTree) -> usize {
+            let state_bytes =
+                (current_states.capacity() + next_states.capacity()) * size_of::<State>();
+            let sol_tree_bytes = sol_tree.bytes_used();
+            let item_order_bytes = self.item_order.capacity() * size_of::<usize>();
+            self.bytes_used + state_bytes + sol_tree_bytes + item_order_bytes
+    }
+
+
+    fn print_update(
+        &mut self,
+        i: usize,
+        current_states: &Vec<State>,
+        next_states: &Vec<State>,
+        sol_tree: &SolTree,
+    ) {
         let n = self.item_count();
-        // Scale gaps between iteration based on size of i
-        let m = usize::pow(10, (i as f32).log10().floor() as u32);
-        if i != 0 && (i < 10 || i % m == 0) {
+        let elapsed_time = self.last_log_update.elapsed().as_millis();
+        if i != 0 && ((i < 10 || (i < 100 && i % 10 == 0)) || elapsed_time > 1500) {
+            self.last_log_update = std::time::Instant::now();
             let core_width = (self.t - self.s) + 1;
             let core_percentage = 100.0 * (core_width as f32 / n as f32);
+            let bytes_estimate = self.bytes_estimate(current_states, next_states, sol_tree);
+            let hr_bytes = human_readable_bytes(bytes_estimate);
             println!(
-                "Iteration i: {}, active states: {}, sol tree size: {}, core_size: %{:.4}",
+                "iteration i: {}, active_states: {}, core_size: %{:.4}, mem_used: {} ({} bytes)",
                 i,
                 current_states.len(),
-                sol_tree.len(),
                 core_percentage,
+                hr_bytes,
+                bytes_estimate,
             );
         }
     }
 
-    fn print_final_update(&self, i: usize, current_states: &[State], sol_tree: &SolTree) {
+    fn print_final_update(
+        &mut self,
+        i: usize,
+        current_states: &Vec<State>,
+        next_states: &Vec<State>,
+        sol_tree: &SolTree,
+    ) {
         let n = self.item_count();
-        // Scale gaps between iteration based on size of i
         let core_width = (self.t - self.s) + 1;
         let core_percentage = 100.0 * (core_width as f32 / n as f32);
+        let bytes_estimate = self.bytes_estimate(current_states, next_states, sol_tree);
+        let hr_bytes = human_readable_bytes(bytes_estimate);
         println!(
-            "Final Iteration i: {}, active states: {}, sol tree size: {}, core_size: %{:.4}",
+            "iteration i: {}, active states: {}, core_size: %{:.4}, mem_used: {} ({} bytes)",
             i,
             current_states.len(),
-            sol_tree.len(),
             core_percentage,
+            hr_bytes,
+            bytes_estimate,
         );
     }
 
@@ -511,7 +549,7 @@ impl<'a> Instance<'a> {
 
         let mut sol_tree = SolTree::new();
         while !current_states.is_empty() && i < n {
-            self.print_update(i, &current_states, &sol_tree);
+            self.print_update(i, &current_states, &next_states, &sol_tree);
 
             if self.t < n - 1 {
                 self.t += 1;
@@ -537,7 +575,7 @@ impl<'a> Instance<'a> {
                 break;
             }
         }
-        self.print_final_update(i, &current_states, &sol_tree);
+        self.print_final_update(i, &current_states, &next_states, &sol_tree);
         self.backtrack_decision(&mut sol_tree);
     }
 }
