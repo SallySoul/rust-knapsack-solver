@@ -103,26 +103,20 @@ fn write_correlation<O: std::io::Write>(
     rng: &mut ThreadRng,
 ) -> Result<usize, Box<dyn std::error::Error>> {
     let t_distribution = Uniform::from(0.0..1f32);
-    let offset_distribution = Uniform::from(-1.0..1.0f32);
-    let value_bound_f32 = options.value_bound as f32;
     let weight_bound_f32 = options.weight_bound as f32;
     let mut weight_sum = 0;
     for id in 0..options.item_count {
-        let value_t = t_distribution.sample(rng);
-        let offset = offset_distribution.sample(rng);
-
-        let weight_t = (value_t + value_t * options.coeff * offset).clamp(0.0, 1.0);
-        let value = 1.max((value_t * value_bound_f32) as usize);
-        // No zero weights
+        let weight_t = t_distribution.sample(rng);
         let weight = 1.max((weight_t * weight_bound_f32) as usize);
+        let value = weight + options.weight_bound / 10;
 
         // no zero weights!
         weight_sum += weight;
 
         if weight == 0 {
             println!(
-                "vt: {}, wt: {}, v: {}, w: {}",
-                value_t, weight_t, value, weight
+                "wt: {}, v: {}, w: {}",
+                weight_t, value, weight
             );
         }
         writeln!(output, "{} {} {}", id, value, weight)?;
