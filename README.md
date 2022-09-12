@@ -55,9 +55,9 @@ Another difference between `minknap` and the naive dynamic solution is that stat
 
 There are several ways that `minknap` bounds and discards states.
 First, every state that is under capacity is a valid solution.
-The most profitable valid state is our lower bound.
-We can relax the integer constraint to gain a strong upper bound for the profit of a given state.
-This is done by linearly adding / removing the next most efficient / inefficent item depending on whether the state is under of over capacity.
+At any given point in time, the most profitable valid solution is our lower bound.
+We can relax the integer decision constraint to gain a strong upper bound for the profit of a given state.
+This is done by linearly adding / removing the next most efficient / inefficent item depending on whether the state is under / over capacity.
 Lastly, we can remove so-called "dominated" states.
 This is when we have a state with a lower profit at the same or higher weight than another known
 state.
