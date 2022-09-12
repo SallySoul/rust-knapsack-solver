@@ -2,6 +2,7 @@ use clap::Parser;
 
 mod generate;
 mod solver;
+mod converter;
 
 #[derive(Parser, Debug)]
 #[clap(version)]

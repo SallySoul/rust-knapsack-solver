@@ -35,5 +35,6 @@ pub fn solve(problem: &Problem) -> Solution {
     Solution {
         decision,
         value: value_sum,
+        weight: weight_sum,
     }
 }
