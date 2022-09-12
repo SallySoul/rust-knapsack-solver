@@ -20,13 +20,18 @@ pub enum Correlation {
 pub struct Options {
     /// How the weight and values of the items should correlate.
     /// Options are None, Some, and Strong
-    /// If choosing Some, use the coeff argument to determine
-    /// ammount of correlation
     #[clap(long, default_value_t = Correlation::None)]
     correlation: Correlation,
 
+    /// If choosing Some, use the coeff argument to determine
+    /// ammount of correlation
     #[clap(long, value_parser, default_value_t = 0.1)]
     coeff: f32,
+
+    /// If choosing Strong, use value_offset to control the 
+    /// value offset (v = w + value_offset)
+    #[clap(long, long, value_parser, default_value_t = 10)]
+    value_offset: usize,
 
     /// How many items to generate
     #[clap(short = 'n', long, value_parser, default_value_t = 30)]
@@ -41,13 +46,21 @@ pub struct Options {
     #[clap(long, value_parser, default_value_t = 0.5)]
     capacity_ratio: f32,
 
-    /// Upper bound on weight
-    #[clap(short, long, value_parser, default_value_t = 100)]
-    weight_bound: usize,
+    /// Lower bound on weight
+    #[clap(long, value_parser, default_value_t = 1)]
+    weight_lower_bound: usize,
+
+    /// Lower bound on value
+    #[clap(long, value_parser, default_value_t = 1)]
+    value_lower_bound: usize,
 
     /// Upper bound on weight
+    #[clap(long, value_parser, default_value_t = 100)]
+    weight_upper_bound: usize,
+
+    /// Upper bound on value
     #[clap(short, long, value_parser, default_value_t = 100)]
-    value_bound: usize,
+    value_upper_bound: usize,
 
     /// Where to write the problem file
     #[clap(short, long, value_parser)]
@@ -82,8 +95,8 @@ fn write_no_correlation<O: std::io::Write>(
     output: &mut O,
     rng: &mut ThreadRng,
 ) -> Result<usize, Box<dyn std::error::Error>> {
-    let value_distribution = Uniform::from(1..options.value_bound);
-    let weight_distribution = Uniform::from(1..options.weight_bound);
+    let value_distribution = Uniform::from(options.value_lower_bound..options.value_upper_bound);
+    let weight_distribution = Uniform::from(options.weight_lower_bound..options.weight_upper_bound);
     let mut weight_sum = 0;
     for id in 0..options.item_count {
         let value = value_distribution.sample(rng);
@@ -101,17 +114,17 @@ fn write_almost_strong_correlation<O: std::io::Write>(
 ) -> Result<usize, Box<dyn std::error::Error>> {
     let t_distribution = Uniform::from(0.0..1f32);
     let offset_distribution = Uniform::from(-1.0..1.0f32);
-    let value_bound_f32 = options.value_bound as f32;
-    let weight_bound_f32 = options.weight_bound as f32;
+    let value_upper_bound_f32 = options.value_upper_bound as f32;
+    let weight_upper_bound_f32 = options.weight_upper_bound as f32;
     let mut weight_sum = 0;
     for id in 0..options.item_count {
         let value_t = t_distribution.sample(rng);
         let offset = offset_distribution.sample(rng);
 
         let weight_t = (value_t + value_t * options.coeff * offset).clamp(0.0, 1.0);
-        let value = 1.max((value_t * value_bound_f32) as usize);
+        let value = 1.max((value_t * value_upper_bound_f32) as usize);
         // No zero weights
-        let weight = 1.max((weight_t * weight_bound_f32) as usize);
+        let weight = 1.max((weight_t * weight_upper_bound_f32) as usize);
 
         // no zero weights!
         weight_sum += weight;
@@ -132,12 +145,11 @@ fn write_strong_correlation<O: std::io::Write>(
     output: &mut O,
     rng: &mut ThreadRng,
 ) -> Result<usize, Box<dyn std::error::Error>> {
-    let weight_distribution = Uniform::from(1..options.weight_bound);
-    let value_offset = options.weight_bound / 10;
+    let weight_distribution = Uniform::from(options.weight_lower_bound..options.weight_upper_bound);
     let mut weight_sum = 0;
     for id in 0..options.item_count {
         let weight = weight_distribution.sample(rng);
-        let value = weight + value_offset;
+        let value = weight + options.value_offset;
         
         weight_sum += weight;
 
