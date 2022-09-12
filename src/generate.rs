@@ -49,11 +49,6 @@ pub struct Options {
     #[clap(short, long, value_parser, default_value_t = 100)]
     value_bound: usize,
 
-    /// Lower bound for values. between 0 and 1.0
-    /// scaled with value_bound
-    #[clap(long, value_parser, default_value_t = 0.0)]
-    value_t_lower_bound: f32,
-
     /// Where to write the problem file
     #[clap(short, long, value_parser)]
     output_path: PathBuf,
