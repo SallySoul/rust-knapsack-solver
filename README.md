@@ -14,13 +14,15 @@ Solve an test case using the `solve` sub-command by either specifying a path wit
 piping the problem in through stdin
 
 ```
-.target/release/rust-knapsack-solver solve -i path/to/test.txt
+./target/release/rust-knapsack-solver solve -i test_assets/random_400k.txt
 # OR
-cat path/to/test.txt | ./rust-knapsack-solver solve
+cat test_assets/random_400k.txt | ./target/release/rust-knapsack-solver solve
 ```
 
 The tool and its two subcommands also support the `-h / --help` flags, which well display
 information about additional options.
+
+There are additional tests in `test_assets`.
 
 ## Observations on Knapsack Problem Difficulty
 
