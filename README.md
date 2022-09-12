@@ -19,7 +19,9 @@ piping the problem in through stdin
 cat test_assets/random_400k.txt | ./target/release/rust-knapsack-solver solve
 ```
 
-The tool and its two subcommands also support the `-h / --help` flags, which well display
+Note that printing the decision vector for large problems can take some time. To skip this (the decision vector will still be calculated and validated), pass `-n / --no-print-solution` as well.
+
+The tool and its two subcommands also support the `-h / --help` flags, which will display
 information about additional options.
 
 There are additional tests in `test_assets`.
@@ -63,7 +65,7 @@ This is when we have a state with a lower profit at the same or higher weight th
 state.
 
 In addition to the paper, there are two existing implementations of Minknap that were helpful resources.
-First, Pisenger shared a reference implementation for `minknap` written in C [2].
+First, Pisinger shared a reference implementation for `minknap` written in C [2].
 In addition, a C++ implementation that combines several techniques is available on github from user fontanf [3].
 
 A major difference between our implementation and the ones above relates to sorting the items by efficiency.
