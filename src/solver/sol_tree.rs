@@ -52,8 +52,8 @@ impl SolTree {
         SolTree { crumbs }
     }
 
-    pub fn len(&self) -> usize {
-        self.crumbs.len()
+    pub fn bytes_used(&self) -> usize {
+        self.crumbs.capacity() * std::mem::size_of::<SolCrumb>()
     }
 
     fn get(&self, index: usize) -> &SolCrumb {
