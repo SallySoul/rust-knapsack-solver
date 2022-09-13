@@ -14,9 +14,9 @@ Solve an test case using the `solve` sub-command by either specifying a path wit
 piping the problem in through stdin
 
 ```
-./target/release/rust-knapsack-solver solve -i test_assets/random_400k.txt
+./target/release/rust-knapsack-solver solve -i test_assets/assignment_example.txt
 # OR
-cat test_assets/random_400k.txt | ./target/release/rust-knapsack-solver solve
+cat test_assets/assignment_example.txt | ./target/release/rust-knapsack-solver solve
 ```
 
 Note that printing the decision vector for large problems can take some time. To skip this (the decision vector will still be calculated and validated), pass `-n / --no-print-solution` as well.
