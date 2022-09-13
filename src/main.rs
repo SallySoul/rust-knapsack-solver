@@ -1,8 +1,8 @@
 use clap::Parser;
 
+mod converter;
 mod generate;
 mod solver;
-mod converter;
 
 #[derive(Parser, Debug)]
 #[clap(version)]
