@@ -259,37 +259,58 @@ impl<'a> Instance<'a> {
 
     /// Trying adding item at sorted index self.t to the core
     fn add_item_t(&mut self, current_states: &[State], next_states: &mut Vec<State>) {
-        // Iterate through all items with two indices
-        // First index tracks state we are not changing
-        // Second index tracks state we are changing
-        // This way we can keep the next_states vector sorted
+        // For every state, we need to try both adding and not adding the item
+        // However, we also need to maintain profit and weight ordering of states
+        // Such that duplicates and dominated states can be discarded
+        //
+        // To do so we iterate through all states with two indices
+        // change_index is the next state we will try chaning
+        // keep_index is the next state we are not changing
+        // With some checks, we can be sure that we build an ordered next_states buffer
         // such that
         // value_i < value_{i + 1} weight_i < weight_{i + 1}
         // If we encounter a state with less profit at a greater weight
         // than the current next state, it is "dominated" and can be discarded
+        //
+        // This function is similiar to `void add_item` from
+        // https://github.com/fontanf/knapsacksolver/blob/master/knapsacksolver/algorithms/minknap.cpp
+        // An invaluable reference for figuring it out
+        //
+        // Also worth noting that an earlier version of this solver used a HashMap instead of the
+        // sorted buffer. While still functional, hashing was a significant portion of the runtime
+        // and an order of magnitude more states needed to be explored
         self.add_to_item_order(self.t);
         let item = self.item(self.t);
         let state_count = current_states.len();
         let mut change_index = 0;
         let mut keep_index = 0;
         while change_index != state_count || keep_index != state_count {
+            // Check whether we do the next change_index
+            // If there are no more keep_index or the next keep state would be greater than the
+            // next change state
             if keep_index >= state_count
                 || current_states[keep_index].w > current_states[change_index].w + item.weight
             {
                 let change_state = current_states[change_index];
                 let change_weight = change_state.w + item.weight;
 
+                // Based on the paper, we only need to consider states with weight up to 2 *
+                // problem capacity.
+                // If more aggressive variable reduction were employed, this could be significantly
+                // reduced.
                 if change_weight > self.max_state_weight {
                     change_index += 1;
                     continue;
                 }
 
+                // This would be a dominated state, discard
                 let change_profit = change_state.p + item.value;
                 if !next_states.is_empty() && change_profit <= last_profit(next_states) {
                     change_index += 1;
                     continue;
                 }
 
+                // Ensure this state passes bounds check
                 let upper_bound = self.upper_bound(UBCheck {
                     next_s: self.s,
                     next_t: self.t + 1,
@@ -308,7 +329,12 @@ impl<'a> Instance<'a> {
                     w: change_weight,
                     sol: change_sol,
                 };
+
+                // Only changed states can create a new lower bound
                 self.check_for_new_lower_bound(&new_state);
+
+                // If this state dominates the current last state, overwrite,
+                // otherwise add the new state
                 if !next_states.is_empty() && change_weight == last_weight(next_states) {
                     let last_index = next_states.len() - 1;
                     next_states[last_index] = new_state;
@@ -370,21 +396,17 @@ impl<'a> Instance<'a> {
                 let keep_state = current_states[keep_index];
                 debug_assert!(keep_index < state_count);
 
-                // Don't need to go too far over capacity
                 debug_assert!(keep_state.w < self.max_state_weight);
                 if keep_state.w > self.max_state_weight {
                     keep_index += 1;
                     continue;
                 }
 
-                // This is a dominated state and we can skip
                 if !next_states.is_empty() && keep_state.p <= last_profit(next_states) {
-                    //debug_assert!(keep_state.w <= last_weight(next_states));
                     keep_index += 1;
                     continue;
                 }
 
-                // Check upper bound, if <= lower bound we can skip
                 let upper_bound = self.upper_bound(UBCheck {
                     next_s: self.s + 1,
                     next_t: self.t,
@@ -399,7 +421,6 @@ impl<'a> Instance<'a> {
                 let mut new_state = keep_state;
                 new_state.sol.add_decision(false);
                 if !next_states.is_empty() && keep_state.w == last_weight(next_states) {
-                    // We already checked, so profit must be greater
                     let last_index = next_states.len() - 1;
                     next_states[last_index] = new_state;
                 } else {
@@ -410,7 +431,6 @@ impl<'a> Instance<'a> {
                 let change_state = current_states[change_index];
                 let change_weight = change_state.w - item.weight;
 
-                // This is a dominated state and we can skip
                 debug_assert!(change_state.p >= item.value);
                 let change_profit = change_state.p - item.value;
                 if !next_states.is_empty() && change_profit <= last_profit(next_states) {
@@ -418,7 +438,6 @@ impl<'a> Instance<'a> {
                     continue;
                 }
 
-                // Check upper bound, if <= lower bound we can skip
                 let upper_bound = self.upper_bound(UBCheck {
                     next_s: self.s + 1,
                     next_t: self.t,

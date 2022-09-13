@@ -75,9 +75,7 @@ pub fn run(options: &Options) -> Result<(), Box<dyn std::error::Error>> {
     writeln!(output_writer, "{}", options.item_count)?;
     let weight_sum = match options.correlation {
         Correlation::None => write_no_correlation(options, &mut output_writer, &mut rng)?,
-        Correlation::Some => {
-            write_almost_strong_correlation(options, &mut output_writer, &mut rng)?
-        }
+        Correlation::Some => write_some_correlation(options, &mut output_writer, &mut rng)?,
         Correlation::Strong => write_strong_correlation(options, &mut output_writer, &mut rng)?,
     };
 
@@ -109,7 +107,7 @@ fn write_no_correlation<O: std::io::Write>(
     Ok(weight_sum)
 }
 
-fn write_almost_strong_correlation<O: std::io::Write>(
+fn write_some_correlation<O: std::io::Write>(
     options: &Options,
     output: &mut O,
     rng: &mut ThreadRng,
