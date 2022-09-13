@@ -28,7 +28,7 @@ pub struct Options {
     #[clap(long, value_parser, default_value_t = 0.1)]
     coeff: f32,
 
-    /// If choosing Strong, use value_offset to control the 
+    /// If choosing Strong, use value_offset to control the
     /// value offset (v = w + value_offset)
     #[clap(long, long, value_parser, default_value_t = 10)]
     value_offset: usize,
@@ -75,7 +75,9 @@ pub fn run(options: &Options) -> Result<(), Box<dyn std::error::Error>> {
     writeln!(output_writer, "{}", options.item_count)?;
     let weight_sum = match options.correlation {
         Correlation::None => write_no_correlation(options, &mut output_writer, &mut rng)?,
-        Correlation::Some => write_almost_strong_correlation(options, &mut output_writer, &mut rng)?,
+        Correlation::Some => {
+            write_almost_strong_correlation(options, &mut output_writer, &mut rng)?
+        }
         Correlation::Strong => write_strong_correlation(options, &mut output_writer, &mut rng)?,
     };
 
@@ -150,7 +152,7 @@ fn write_strong_correlation<O: std::io::Write>(
     for id in 0..options.item_count {
         let weight = weight_distribution.sample(rng);
         let value = weight + options.value_offset;
-        
+
         weight_sum += weight;
 
         writeln!(output, "{} {} {}", id, value, weight)?;
