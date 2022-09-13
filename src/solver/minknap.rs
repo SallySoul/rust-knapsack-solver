@@ -9,7 +9,10 @@ struct ItemEfficiency {
     efficiency: f32,
 }
 
-fn efficiency_ordering(problem: &Problem) -> Vec<ItemEfficiency> {
+fn efficiency_ordering(problem: &Problem) -> (Vec<ItemEfficiency>, Vec<bool>, usize) {
+    let problem_item_count = problem.items.len();
+    let mut decision = vec![false; problem_item_count];
+    let mut base_value = 0;
     let mut item_efficiencies: Vec<ItemEfficiency> = problem
         .items
         .iter()
@@ -17,9 +20,19 @@ fn efficiency_ordering(problem: &Problem) -> Vec<ItemEfficiency> {
         // Variable reduction
         // Remove items that are larger than the capacity
         .filter(|(_, item)| item.weight <= problem.capacity)
+        // Variable reduction
+        // Remove items that are zero weight
+        .filter(|(index, item)| {
+            let check = item.weight != 0;
+            if !check {
+                decision[*index] = true;
+                base_value += item.value;
+            }
+            check
+        })
         .map(|(index, item)| {
             if item.weight == 0 {
-                panic!("Items with zero weight are not supported");
+                panic!("Items with zero weight should have been removed");
             }
             ItemEfficiency {
                 index,
@@ -32,7 +45,7 @@ fn efficiency_ordering(problem: &Problem) -> Vec<ItemEfficiency> {
     // Hence b cmp a
     item_efficiencies.sort_unstable_by(|a, b| b.efficiency.partial_cmp(&a.efficiency).unwrap());
 
-    item_efficiencies
+    (item_efficiencies, decision, base_value)
 }
 
 struct BreakSolution {
@@ -47,10 +60,8 @@ struct BreakSolution {
 fn break_solution(
     problem: &Problem,
     item_efficiencies: &[ItemEfficiency],
-) -> (BreakSolution, Vec<bool>) {
-    // This is the number of items in the original problem
-    let problem_item_count = problem.items.len();
-
+    decision: &mut [bool],
+) -> BreakSolution {
     // This is the number of items in the reduced problem
     let item_count = item_efficiencies.len();
     let mut result = BreakSolution {
@@ -62,7 +73,6 @@ fn break_solution(
     let mut profit_sum = 0;
     let mut weight_sum = 0;
     let mut i = 0;
-    let mut decision = vec![false; problem_item_count];
     while i < item_count {
         let index = item_efficiencies[i].index;
         let item = &problem.items[index];
@@ -91,7 +101,7 @@ fn break_solution(
         result.weight = weight_sum;
     }
 
-    (result, decision)
+    result
 }
 
 /// Utility function for add and remove item funtions
@@ -144,13 +154,14 @@ pub struct Instance<'a> {
     last_log_update: std::time::Instant,
     bytes_used: usize,
     states_explored: usize,
+    base_value: usize,
 }
 
 impl<'a> Instance<'a> {
     fn new(problem: &Problem) -> Instance {
-        let item_efficiencies = efficiency_ordering(problem);
+        let (item_efficiencies, mut decision, base_value) = efficiency_ordering(problem);
         let n = item_efficiencies.len();
-        let (break_solution, decision) = break_solution(problem, &item_efficiencies);
+        let break_solution = break_solution(problem, &item_efficiencies, &mut decision);
         let lower_bound = break_solution.profit;
         let b = break_solution.break_item;
         let s = b;
@@ -180,6 +191,7 @@ impl<'a> Instance<'a> {
             last_log_update: std::time::Instant::now(),
             bytes_used,
             states_explored: 0,
+            base_value,
         }
     }
 
@@ -612,7 +624,7 @@ pub fn solve(problem: &Problem) -> Result<Solution, Box<dyn std::error::Error>> 
     instance.solve();
     Ok(Solution {
         decision: instance.decision,
-        value: instance.lower_bound,
+        value: instance.lower_bound + instance.base_value,
         weight: instance.best_sol_weight,
     })
 }

@@ -72,7 +72,9 @@ A major difference between our implementation and the ones above relates to sort
 The paper describes a technique for doing the minimal ammount of sorting necessary.
 We opted to compleletly sort the items as this made the code far simpler and is relativley cheap computationally.
 
-We do make minor use of variable reduction by removing items with weights larger than the problem capacity.
+We do make minor use of variable reduction.
+We removing items with weights larger than the problem capacity.
+We also automatically use items with zero weight.
 Future work for this solver could include making more extensive use of variable reduction.
 There is a body of work for this on the knapsack problem, and it is a technique relied on heavily in [3].
 
