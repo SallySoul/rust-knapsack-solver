@@ -57,6 +57,17 @@ impl Solution {
     pub fn validate(&self, problem: &Problem) -> bool {
         let mut value_sum = 0;
         let mut weight_sum = 0;
+        let mut valid = true;
+
+        if self.decision.len() != problem.items.len() {
+            println!(
+                "ERROR: Solution::validate decision len same size as problem, {} vs {}",
+                self.decision.len(),
+                problem.items.len()
+            );
+            valid = false;
+        }
+
         for (d, i) in self.decision.iter().zip(problem.items.iter()) {
             if *d {
                 value_sum += i.value;
@@ -65,12 +76,14 @@ impl Solution {
         }
 
         if value_sum != self.value {
-            println!("Solution::validate, value does not match!");
+            println!("ERROR: Solution::validate, value does not match!");
+            valid = false;
         }
         if weight_sum != self.weight {
-            println!("Solution::validate, weight does not match!");
+            println!("ERROR: Solution::validate, weight does not match!");
+            valid = false;
         }
 
-        value_sum == self.value && weight_sum == self.weight
+        valid
     }
 }

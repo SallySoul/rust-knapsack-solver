@@ -14,7 +14,9 @@ fn efficiency_ordering(problem: &Problem) -> Vec<ItemEfficiency> {
         .items
         .iter()
         .enumerate()
-        .filter(|(_, item)| {item.weight <= problem.capacity})
+        // Variable reduction
+        // Remove items that are larger than the capacity
+        .filter(|(_, item)| item.weight <= problem.capacity)
         .map(|(index, item)| {
             if item.weight == 0 {
                 panic!("Items with zero weight are not supported");
@@ -40,10 +42,16 @@ struct BreakSolution {
     linear_profit: usize,
 }
 
-fn initial_bounds(
+/// Calculate the break solution and populate the initial decision vector
+/// Any decisions we make are modifications to the break decision vector
+fn break_solution(
     problem: &Problem,
     item_efficiencies: &[ItemEfficiency],
 ) -> (BreakSolution, Vec<bool>) {
+    // This is the number of items in the original problem
+    let problem_item_count = problem.items.len();
+
+    // This is the number of items in the reduced problem
     let item_count = item_efficiencies.len();
     let mut result = BreakSolution {
         break_item: 0,
@@ -54,7 +62,7 @@ fn initial_bounds(
     let mut profit_sum = 0;
     let mut weight_sum = 0;
     let mut i = 0;
-    let mut decision = vec![false; item_count];
+    let mut decision = vec![false; problem_item_count];
     while i < item_count {
         let index = item_efficiencies[i].index;
         let item = &problem.items[index];
@@ -142,7 +150,7 @@ impl<'a> Instance<'a> {
     fn new(problem: &Problem) -> Instance {
         let item_efficiencies = efficiency_ordering(problem);
         let n = item_efficiencies.len();
-        let (break_solution, decision) = initial_bounds(problem, &item_efficiencies);
+        let (break_solution, decision) = break_solution(problem, &item_efficiencies);
         let lower_bound = break_solution.profit;
         let b = break_solution.break_item;
         let s = b;
@@ -463,17 +471,17 @@ impl<'a> Instance<'a> {
         );
     }
 
-    fn bytes_estimate(&mut self,
+    fn bytes_estimate(
+        &mut self,
         current_states: &Vec<State>,
         next_states: &Vec<State>,
-        sol_tree: &SolTree) -> usize {
-            let state_bytes =
-                (current_states.capacity() + next_states.capacity()) * size_of::<State>();
-            let sol_tree_bytes = sol_tree.bytes_used();
-            let item_order_bytes = self.item_order.capacity() * size_of::<usize>();
-            self.bytes_used + state_bytes + sol_tree_bytes + item_order_bytes
+        sol_tree: &SolTree,
+    ) -> usize {
+        let state_bytes = (current_states.capacity() + next_states.capacity()) * size_of::<State>();
+        let sol_tree_bytes = sol_tree.bytes_used();
+        let item_order_bytes = self.item_order.capacity() * size_of::<usize>();
+        self.bytes_used + state_bytes + sol_tree_bytes + item_order_bytes
     }
-
 
     fn print_update(
         &mut self,
@@ -515,11 +523,7 @@ impl<'a> Instance<'a> {
         let hr_bytes = human_readable_bytes(bytes_estimate);
         println!(
             "final i: {}, states_explored: {}, core_size: %{:.4}, mem_used: {} ({} bytes)",
-            i,
-            self.states_explored,
-            core_percentage,
-            hr_bytes,
-            bytes_estimate,
+            i, self.states_explored, core_percentage, hr_bytes, bytes_estimate,
         );
     }
 
