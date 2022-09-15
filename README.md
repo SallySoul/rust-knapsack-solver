@@ -33,6 +33,29 @@ Generally, we saw three ways to affect the difficulty of the problem, as decscri
 * The max / avg weight of the items
 * The correlation of weight and value
 
+Below is a table show the run time, memory used, and states explored for all the cases in `test_assets`. Our hardest test case in the suite has 30k items, but the weights range from 1 to 1 million, and the values are strongly correlated in that `v_i = w_i + 100k`.
+
+From our experience, the single most important factor in runtime is reducing the states explored. A debug build of our current solver handily beats an earlier release build that did not remove dominated states. In addition, an earlier version of the build used a hashmap instead of keeping the states in an orderd buffer, which results in hasing operations consuming ~90% of the runtime.
+
+```
+Name                                  Time     States Explored   Mem Used
+all_items_edge_case                   0.07s                      
+assignment_example                    0.00s    110               2.86 kB
+greedy_sol_500k                       0.11s    11696180          108.77 MB
+item_larger_than_capacity_edge_case   0.00s    110               2.89 kB
+large_item_edge_case                  0.00s    110               2.89 kB
+random_400k                           0.09s    6849858           26.83 MB
+strong_10k_1mw                        4.98s    1054352653        2.28 GB
+strong_1k_100kw                       0.00s    79713             2.15 MB
+strong_1k_1mw                         0.00s    163942            4.24 MB
+strong_250k_100kw                     3.00s    693312841         817.75 MB
+strong_30k_1mw                        25.52s   5788085093        9.67 GB
+strong_500k_100kw                     9.72s    2278714198        2.17 GB
+subset_sum                            0.00s    3449              98.81 kB
+too_big_edge_case                     0.00s    55                3.67 kB
+zero_weight_items                     0.00s    110               2.91 kB
+```
+
 ## Notes on the Implementatation
 
 The default solver used by the `solve` sub-command is based on the `minknap` algorithm [1]. This is
@@ -73,7 +96,7 @@ The paper describes a technique for doing the minimal ammount of sorting necessa
 We opted to compleletly sort the items as this made the code far simpler and is relativley cheap computationally.
 
 We do make minor use of variable reduction.
-We removing items with weights larger than the problem capacity.
+We remove items with weights larger than the problem capacity.
 We also automatically use items with zero weight.
 Future work for this solver could include making more extensive use of variable reduction.
 There is a body of work for this on the knapsack problem, and it is a technique relied on heavily in [3].
