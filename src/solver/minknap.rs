@@ -174,7 +174,7 @@ impl<'a> Instance<'a> {
             + (problem.items.capacity() * size_of::<Item>());
 
         Instance {
-            best_sol_weight: 0,
+            best_sol_weight: break_solution.weight,
             best_sol_level: 0,
             best_sol_item: 0,
             best_sol: SolCrumb::new(0),
