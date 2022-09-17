@@ -28,32 +28,41 @@ There are additional tests in `test_assets`.
 
 ## Observations on Knapsack Problem Difficulty
 
-Generally, we saw three ways to affect the difficulty of the problem, as decscribed in [4].
+Generally, we saw a few ways to affect the difficulty of the problem, as decscribed in [4].
 * The number of items
 * The max / avg weight of the items
-* The correlation of weight and value
+* The correlation of weight and values
+* The number of different state capacities that could be induced
 
-Below is a table show the run time, memory used, and states explored for all the cases in `test_assets`. Our hardest test case in the suite has 30k items, but the weights range from 1 to 1 million, and the values are strongly correlated in that `v_i = w_i + 100k`.
+The solver was capable of handling millions (or more, we didn't check) of items if the weights and values were not correlated, as the sorting by efficiency was able to do most of the work in constructing the solutution.
+In these cases only a small percentage (< 1%) of items needed to be added to the core to find an optimal solution.
+Cases where the weight and value were strongly correlated, `v_i = w_i + Fixed_Value`, were much harder as the efficiency sort is not nearly as useful.
+In addition we found that using prime valued weights induced the most states, with our solver often needing to fully expand the core.
 
-From our experience, the single most important factor in runtime is reducing the states explored. A debug build of our current solver handily beats an earlier release build that did not remove dominated states. In addition, an earlier version of the build used a hashmap instead of keeping the states in an orderd buffer, which results in hasing operations consuming ~90% of the runtime.
+From our experience, the single most important factor in runtime was reducing the states explored. A debug build of our current solver handily beats an earlier release build that did not remove dominated states. In addition, an earlier version of the build used a hashmap instead of keeping the states in an ordered buffer, which resulted in hasing operations consuming ~90% of the runtime.
+
+Below is a table showing the run time, states explored, and memory used for all the cases in `test_assets`. The `strong_n_mw` tests have `n` randomly generated items with weight in `[1, m]`. The `string_prime_n` tests have prime weights only. Our hardest test case in the suite only had 30k items, but the solver had to check an astronomical number of states to do so (at ~220m states / s).
 
 ```
-Name                                  Time     States Explored   Mem Used
-all_items_edge_case                   0.07s                      
-assignment_example                    0.00s    110               2.86 kB
-greedy_sol_500k                       0.11s    11696180          108.77 MB
-item_larger_than_capacity_edge_case   0.00s    110               2.89 kB
-large_item_edge_case                  0.00s    110               2.89 kB
-random_400k                           0.09s    6849858           26.83 MB
-strong_10k_1mw                        4.98s    1054352653        2.28 GB
-strong_1k_100kw                       0.00s    79713             2.15 MB
-strong_1k_1mw                         0.00s    163942            4.24 MB
-strong_250k_100kw                     3.00s    693312841         817.75 MB
-strong_30k_1mw                        25.52s   5788085093        9.67 GB
-strong_500k_100kw                     9.72s    2278714198        2.17 GB
-subset_sum                            0.00s    3449              98.81 kB
-too_big_edge_case                     0.00s    55                3.67 kB
-zero_weight_items                     0.00s    110               2.91 kB
+Name, Time, States Explored, Mem Used
+all_items_edge_case, 0.27s, 0, ~
+too_big_edge_case, 0.00s, 55, 3.67 kB
+assignment_example, 0.00s, 110, 2.86 kB
+item_larger_than_capacity_edge_case, 0.00s, 110, 2.89 kB
+large_item_edge_case, 0.00s, 110, 2.89 kB
+zero_weight_items, 0.00s, 110, 2.91 kB
+subset_sum, 0.00s, 3449, 98.81 kB
+strong_1k_100kw, 0.00s, 79713, 2.15 MB
+strong_1k_1mw, 0.00s, 163942, 4.24 MB
+random_400k, 0.09s, 6849858, 26.83 MB
+greedy_sol_500k, 0.12s, 11696180, 108.77 MB
+strong_250k_100kw, 3.07s, 693312841, 817.75 MB
+strong_10k_1mw, 4.99s, 1054352653, 2.28 GB
+strong_500k_100kw, 9.92s, 2278714198, 2.17 GB
+strong_30k_1mw, 25.80s, 5788085093, 9.67 GB
+strong_prime_1k, 43.85s, 10145044859, 6.44 GB
+strong_prime_10k, 87.87s, 20078165981, 10.74 GB
+strong_prime_30k, 175.40s, 39383119361, 19.33 GB
 ```
 
 ## Notes on the Implementatation
