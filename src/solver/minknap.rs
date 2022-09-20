@@ -127,7 +127,7 @@ pub struct State {
 /// Wanted named arguments for lower_bound function
 /// Easy to mix up four usizes
 struct UBCheck {
-    next_s: usize,
+    next_s: Option<usize>, // None if next s would be negative
     next_t: usize,
     new_weight: usize,
     new_profit: usize,
@@ -215,7 +215,7 @@ impl<'a> Instance<'a> {
         let n = self.item_count();
         if u.new_weight <= self.problem_capacity() {
             // Under capacity
-            if u.next_t < n - 1 {
+            if u.next_t < n {
                 // Best we could do is linear add next t item
                 let weight_remainder = (self.problem.capacity - u.new_weight) as f32;
                 let next_t_efficiency = self.item_efficiencies[u.next_t].efficiency;
@@ -226,10 +226,10 @@ impl<'a> Instance<'a> {
             }
         } else {
             // Over capacity
-            if u.next_s > 0 {
+            if u.next_s.is_some() {
                 // Best we could do is linear remove next s item
                 let weight_remainder = (u.new_weight - self.problem.capacity) as f32;
-                let next_s_efficiency = self.item_efficiencies[u.next_s].efficiency;
+                let next_s_efficiency = self.item_efficiencies[u.next_s.unwrap()].efficiency;
                 let linear_diff = (weight_remainder * next_s_efficiency).ceil() as usize;
                 if linear_diff > u.new_profit {
                     0
@@ -260,12 +260,10 @@ impl<'a> Instance<'a> {
             self.best_sol_level = self.sol_level + 1;
             self.best_sol_item = self.item_order.len() - 1;
             self.best_sol_weight = s.w;
-            /*
             println!(
                 "New lower bound found, {}, weight: {}, sol: {:064b}",
                 self.lower_bound, self.best_sol_weight, self.best_sol.recent
             );
-            */
         }
     }
 
@@ -324,7 +322,7 @@ impl<'a> Instance<'a> {
 
                 // Ensure this state passes bounds check
                 let upper_bound = self.upper_bound(UBCheck {
-                    next_s: self.s,
+                    next_s: Some(self.s),
                     next_t: self.t + 1,
                     new_profit: change_profit,
                     new_weight: change_weight,
@@ -370,7 +368,7 @@ impl<'a> Instance<'a> {
                 }
 
                 let upper_bound = self.upper_bound(UBCheck {
-                    next_s: self.s,
+                    next_s: Some(self.s),
                     next_t: self.t + 1,
                     new_profit: keep_state.p,
                     new_weight: keep_state.w,
@@ -420,7 +418,7 @@ impl<'a> Instance<'a> {
                 }
 
                 let upper_bound = self.upper_bound(UBCheck {
-                    next_s: self.s + 1,
+                    next_s: if self.s > 0 { Some(self.s - 1) } else { None },
                     next_t: self.t,
                     new_profit: keep_state.p,
                     new_weight: keep_state.w,
@@ -451,7 +449,8 @@ impl<'a> Instance<'a> {
                 }
 
                 let upper_bound = self.upper_bound(UBCheck {
-                    next_s: self.s + 1,
+                    next_s: if self.s > 0 { Some(self.s - 1) } else { None },
+
                     next_t: self.t,
                     new_profit: change_profit,
                     new_weight: change_weight,
