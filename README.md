@@ -45,24 +45,25 @@ Below is a table showing the run time, states explored, and memory used for all 
 
 ```
 Name                                  Time      States Explored   Mem Used
-all_items_edge_case                   0.27s     0                 ~
-too_big_edge_case                     0.00s     55                3.67 kB
-assignment_example                    0.00s     110               2.86 kB
-item_larger_than_capacity_edge_case   0.00s     110               2.89 kB
-large_item_edge_case                  0.00s     110               2.89 kB
-zero_weight_items                     0.00s     110               2.91 kB
-subset_sum                            0.00s     3449              98.81 kB
-strong_1k_100kw                       0.00s     79713             2.15 MB
-strong_1k_1mw                         0.00s     163942            4.24 MB
-random_400k                           0.09s     6849858           26.83 MB
+all_items_edge_case                   0.08s
+upper_bound_edge_case                 0.00s     10                691 B
+too_big_edge_case                     0.00s     17                3.41 kB
+assignment_example                    0.00s     106               2.86 kB
+item_larger_than_capacity_edge_case   0.00s     106               2.89 kB
+large_item_edge_case                  0.00s     106               2.89 kB
+zero_weight_items                     0.00s     106               2.91 kB
+subset_sum                            0.00s     2886              82.42 kB
+strong_1k_100kw                       0.00s     77233             2.15 MB
+strong_1k_1mw                         0.00s     162588            4.24 MB
+random_400k                           0.09s     6772964           26.83 MB
 greedy_sol_500k                       0.12s     11696180          108.77 MB
-strong_250k_100kw                     3.07s     693312841         817.75 MB
-strong_10k_1mw                        4.99s     1054352653        2.28 GB
-strong_500k_100kw                     9.92s     2278714198        2.17 GB
-strong_30k_1mw                        25.80s    5788085093        9.67 GB
-strong_prime_1k                       43.85s    10145044859       6.44 GB
-strong_prime_10k                      87.87s    20078165981       10.74 GB
-strong_prime_30k                      175.40s   39383119361       19.33 GB
+strong_250k_100kw                     3.17s     693232064         817.75 MB
+strong_10k_1mw                        4.92s     1053259446        2.28 GB
+strong_500k_100kw                     9.96s     2278474752        2.17 GB
+strong_30k_1mw                        26.10s    5786448345        9.67 GB
+strong_prime_1k                       45.71s    10408099547       6.44 GB
+strong_prime_10k                      89.65s    20230092398       10.74 GB
+strong_prime_30k                      180.48s   40060871912       19.33 GB
 ```
 
 ## Notes on the Implementatation
