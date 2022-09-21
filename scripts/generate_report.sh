@@ -2,7 +2,7 @@
 
 cargo build --release 
 tests=`ls test_assets`
-echo "Name, Time, States Explored, Mem Used" > report.csv
+rm report.csv s_report.csv formated_report
 for t in $tests
 do
   echo "Running test: ${t}"
@@ -16,4 +16,5 @@ do
   echo "${name}, ${time}s, ${states}, ${mem}" >> report.csv
 done
 
-column -ts, report.csv > report.txt
+(echo "Name, Time, States Explored, Mem Used" && sort -k 3 -n report.csv) >> s_report.csv
+column -ts, s_report.csv > formated_report.txt
